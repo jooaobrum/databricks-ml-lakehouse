@@ -76,7 +76,7 @@ query_to_ingest = """
 
 """
 
-df_ingestion = spark.sql(query_to_ingest.format(ingestor_file = ingestor_file, view_tmp = view_tmp))
+df_ingestion = spark.sql(query_to_ingest.format(ingestor_file = ingestor_file, task_name = task_name, view_tmp = view_tmp))
 
 # Save full table
 writer = (
