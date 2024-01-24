@@ -69,7 +69,7 @@ query_to_ingest = """
     SELECT  *,
             '{ingestor_file}' as table_ingestor_file,
             '{task_name}' as table_task_name, 
-            current_timestamp() as table_ingestor_timestamp,
+            current_timestamp() as table_ingestor_timestamp
            
 
            FROM {view_tmp}
