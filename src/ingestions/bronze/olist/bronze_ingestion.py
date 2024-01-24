@@ -11,7 +11,7 @@
 
 # COMMAND ----------
 
-task_name = dbutils.widgets.get('taks_name')
+task_name = dbutils.widgets.get('task_name')
 
 # Name of the database to ingest
 db_name = 'bronze'
