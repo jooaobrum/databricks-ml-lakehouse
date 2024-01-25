@@ -68,7 +68,7 @@ query_to_ingest = """
 
     SELECT  *,
             '{ingestor_file}' as table_ingestor_file,
-            '{task_name}' as table_task_name, 
+            '{task_key}_bronze_ingestion' as table_task_key, 
             current_timestamp() as table_ingestor_timestamp
            
 
@@ -76,7 +76,7 @@ query_to_ingest = """
 
 """
 
-df_ingestion = spark.sql(query_to_ingest.format(ingestor_file = ingestor_file, task_name = task_name, view_tmp = view_tmp))
+df_ingestion = spark.sql(query_to_ingest.format(ingestor_file = ingestor_file, task_key = task_key, view_tmp = view_tmp))
 
 # Save full table
 writer = (
@@ -88,7 +88,8 @@ writer = (
 
 # Check if table exists
 if spark.catalog.tableExists(f"{db_name}.{table_name}"):
-        print('Table exists, not performing full ingestion.')
+    print('Table exists, not performing full ingestion.')
 else:
-        print('Table doesn't exiting, performing first full ingestion.')
-        writer.saveAsTable(f"{db_name}.{table_name}")
+    print("Table doesn't exist, performing first full ingestion.")
+    writer.saveAsTable(f"{db_name}.{table_name}")
+
