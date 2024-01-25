@@ -11,16 +11,16 @@
 
 # COMMAND ----------
 
-task_name = dbutils.widgets.get('task_name')
+task_key = dbutils.widgets.get('task_key')
 
 # Name of the database to ingest
 db_name = 'bronze'
 
 # Reference of the data
-ref_name = dbutils.widgets.get('ref_name')
+ref_name = 'olist'
 
 # Raw table
-raw_table_name = dbutils.widgets.get('raw_table_name')
+raw_table_name = task_key
 
 # Table name in the database
 table_name = f'{ref_name}_{raw_table_name}'
