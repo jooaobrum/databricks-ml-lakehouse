@@ -86,4 +86,9 @@ writer = (
                         .option("overwriteSchema", "true")
         )
 
-writer.saveAsTable(f"{db_name}.{table_name}")
+# Check if table exists
+if spark.catalog.tableExists(f"{db_name}.{table_name}"):
+        print('Table exists, not performing full ingestion.')
+else:
+        print('Table doesn't exiting, performing first full ingestion.')
+        writer.saveAsTable(f"{db_name}.{table_name}")
