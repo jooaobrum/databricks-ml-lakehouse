@@ -5,7 +5,7 @@
 # COMMAND ----------
 
 # Task key to automate the workflow 
-task_key = 'customers'
+task_key = dbutils.widgets.get('task_key')
 
 # Name of the database to ingest
 db_name = 'silver'
