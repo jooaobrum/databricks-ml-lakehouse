@@ -6,7 +6,7 @@
 # COMMAND ----------
 
 # Task key definition - match with raw table name
-task_key = 'order_payments'
+task_key = dbutils.widgets.get('task_key')
 
 # Name of the database to ingest
 db_name = 'bronze'
