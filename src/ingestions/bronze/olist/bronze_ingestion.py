@@ -1,17 +1,12 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC
-# MAGIC ### Setup
+# MAGIC ## Setup
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC
-# MAGIC The idea is to use a standard account for this purpose. Then, the unity catalog will not be available free of charges. Then, to overcome this problem, I will create databases to separate each layer of the architecture to simplify this idea. 
-
-# COMMAND ----------
-
-task_key = dbutils.widgets.get('task_key')
+# Task key definition - match with raw table name
+task_key = 'order_payments'
 
 # Name of the database to ingest
 db_name = 'bronze'
@@ -19,22 +14,22 @@ db_name = 'bronze'
 # Reference of the data
 ref_name = 'olist'
 
+# Format of the raw file
+file_format = 'csv'
+
 # Raw table
 raw_table_name = task_key
 
 # Table name in the database
 table_name = f'{ref_name}_{raw_table_name}'
 
-# Format of the raw file
-file_format = 'csv'
-
-# Partition by 
-partition_fields = ''
-
 # File's path in the landing zone
 raw_path = f"/mnt/landing_zone/olist/{raw_table_name}.csv"
 
+# Schema path
+schema_path = f'schemas/{raw_table_name}_schema.json'
 
+# Reading options 
 read_opt = {
         "header": "true",
         "sep": ",",
@@ -44,26 +39,87 @@ read_opt = {
 
 # MAGIC %md
 # MAGIC
-# MAGIC # Bronze Ingestion
+# MAGIC ## Starting Bronze Ingestion
 
 # COMMAND ----------
 
-# Entry point to read data
-spark_reader = (spark.read
-                    .format(file_format)
-                    .options(**read_opt))
+# MAGIC %md
+# MAGIC ### Imports
 
-# Read file
-df_read = spark_reader.load(raw_path)
+# COMMAND ----------
 
-# Create tmp view
+import json
+from pyspark.sql.types import StructType    
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Functions
+
+# COMMAND ----------
+
+def load_schema(schema_path):
+    # Read pre-defined Schema 
+    with open(schema_path, 'r') as f:
+        schema = f.read()
+
+    # Correct schema
+    table_schema = StructType.fromJson(json.loads(schema))
+
+    return table_schema
+
+# COMMAND ----------
+
+def read_data(file_format, table_schema, read_opt, raw_path):
+    # Entry point to read data
+    spark_reader = (spark.read
+                        .format(file_format)
+                        .schema(table_schema)
+                        .options(**read_opt))
+
+    # Read file
+    df = spark_reader.load(raw_path)
+
+    return df
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 1. Reading Schema
+
+# COMMAND ----------
+
+# Load schema
+table_schema = load_schema(schema_path)
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC
+# MAGIC ### 2. Reading Raw File
+
+# COMMAND ----------
+
+# Read file from landing zone
+df_read = read_data(file_format, table_schema, read_opt, raw_path)
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC
+# MAGIC ### 3. Transforming Ingested Query 
+
+# COMMAND ----------
+
+# Create tmp view to modify file
 view_tmp = f"view_{table_name}"
 df_read.createOrReplaceTempView(view_tmp)
 
-# File name
+# Retrieve file name to ingest
 ingestor_file = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
 
-# Transform to add file ingestor and dt_ingestor
+# Transform to add file ingestor, key and timestamp
 query_to_ingest = """
 
     SELECT  *,
@@ -77,6 +133,14 @@ query_to_ingest = """
 """
 
 df_ingestion = spark.sql(query_to_ingest.format(ingestor_file = ingestor_file, task_key = task_key, view_tmp = view_tmp))
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 4. Saving as Delta Table in Bronze Schema
+
+# COMMAND ----------
 
 # Save full table
 writer = (
