@@ -1,0 +1,29 @@
+expectations:
+- expectation_type: expect_column_values_to_not_be_null
+  kwargs:
+    column: customer_unique_id
+    mostly: 0.99
+- expectation_type: expect_column_values_to_be_between
+  kwargs:
+    column: total_items_order_90_days
+    min_value: 0
+    max_value: null
+    mostly: 0.9
+- expectation_type: expect_column_values_to_be_between
+  kwargs:
+    column: total_orders_90_days
+    min_value: 0
+    max_value: null
+    mostly: 0.9
+- expectation_type: expect_column_values_to_be_between
+  kwargs:
+    column: total_orders_delivered_90_days
+    min_value: 0
+    max_value: null
+    mostly: 0.9
+- expectation_type: expect_column_values_to_be_between
+  kwargs:
+    column: total_orders_unavailable_90_days
+    min_value: 0
+    max_value: null
+    mostly: 0.9
