@@ -29,7 +29,7 @@ def check_and_write_to_delta_table(spark, df, db_name, table_name, mode="overwri
     - table_name: Table name.
     - mode: Write mode, either "overwrite" or "append". Default is "overwrite".
     """
-    if spark.catalog.tableExists(f"{db_name}.{table_name}"):
+    if not spark.catalog.tableExists(f"{db_name}.{table_name}"):
         mode = "overwrite"  # If the table exists, always overwrite
 
     write_to_delta_table(spark, df, db_name, table_name, mode=mode)
