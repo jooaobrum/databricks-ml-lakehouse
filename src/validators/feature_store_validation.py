@@ -25,7 +25,7 @@ import sys
 sys.path.insert(0, '../libs')
 from validation_utils import DataQuality
 from yaml_expectation_configurations import get_yaml_expectation_configurations
-from utils import check_and_write_to_delta_table
+from delta_utils import check_and_write_to_delta_table
 
 # COMMAND ----------
 
