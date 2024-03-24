@@ -1,0 +1,10 @@
+# Delete all information about last deployment - to be sure that we are deploying the new model, etc
+
+# Delete MLFlow Registry
+delete_model_registry: True
+
+# Delete MLFlow Tracking Experiments
+delete_mlflow_experiments: True
+
+# Drop Labels
+drop_labels_table: True

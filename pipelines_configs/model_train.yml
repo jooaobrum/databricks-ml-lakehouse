@@ -1,0 +1,23 @@
+# Parameters for MLflow tracking
+mlflow_params:
+  
+  # Name of the MLflow run
+  run_name: 'DT with 8 features'
+
+
+# Tables to save the reference from training
+train_table: input_table: 'olist_bad_reviews.train'
+validation_table: input_table: 'olist_bad_reviews.validation'
+
+
+# Parameters for the machine learning pipeline
+pipeline_params:
+    test_size: 0.2
+    random_state: 42
+  
+
+# Parameters for the machine learning model
+model_params:
+    max_depth: 5
+    min_samples_leaf: 4
+    min_samples_split: 10

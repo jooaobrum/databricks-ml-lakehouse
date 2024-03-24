@@ -1,0 +1,8 @@
+# Parameters for model comparison
+model_comparison_params:
+
+  # Metric used for evaluating model performance (ROC AUC score)
+  metric: 'roc_auc_score'
+
+  # Flag indicating whether higher values of the metric are better (True in this case)
+  higher_is_better: True

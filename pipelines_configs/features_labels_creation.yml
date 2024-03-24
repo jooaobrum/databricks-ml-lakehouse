@@ -1,0 +1,10 @@
+# Specifying the input table containing the dataset to be processed
+input_db : 'silver'
+input_tables: ['olist_orders','olist_customers', 'olist_order_reviews']
+
+fs_primary_keys: ['fs_reference_timestamp', 'customer_unique_id']
+
+# Variables to build the local features store - for the project bad reviews
+variables: ['total_orders_delivered_90_days', 'total_orders_late_delivery', 'avg_days_to_deliver', 'total_spent_freight_90_days', 'total_spent_price_90_days', 'total_bed_bath_table_items_90_days', 'total_spent_price_180_days', 'total_spent_freight_180_days']
+
+target: 'bad_review_flag'

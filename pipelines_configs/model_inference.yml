@@ -1,0 +1,11 @@
+# State of the mflow model
+mlflow_params:
+  model_registry_stage: 'production'
+
+# Input Table
+data_input:
+  table_name: 'olist_bad_reviews.bad_review_labels'
+
+# Mode to save the output table
+data_output:
+  mode: 'overwrite'
