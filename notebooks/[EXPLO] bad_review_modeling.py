@@ -45,6 +45,16 @@
 
 # COMMAND ----------
 
+from sklearn.model_selection import StratifiedKFold
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.tree import DecisionTreeClassifier
+
+
+
+# COMMAND ----------
+
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -60,8 +70,6 @@ from sklearn.metrics import (accuracy_score, precision_score, recall_score,
                              f1_score, roc_auc_score, average_precision_score, 
                              confusion_matrix, classification_report)
 from sklearn.utils.class_weight import compute_class_weight
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.pipeline import Pipeline as Pipeline
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -392,6 +400,16 @@ print('Shape of test:', X_test.shape, y_test.shape)
 print('Train balance:')
 print(y_train.value_counts(normalize = True))
 
+
+# COMMAND ----------
+
+# Compute class weights
+class_weights = compute_class_weight('balanced', classes=np.unique(y_train), y=y_train)
+class_weight_dict = dict(enumerate(class_weights))
+
+# COMMAND ----------
+
+class_weight_dict
 
 # COMMAND ----------
 

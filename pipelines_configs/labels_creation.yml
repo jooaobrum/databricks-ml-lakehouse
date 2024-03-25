@@ -1,0 +1,6 @@
+# Specifying the maximum datetime to train
+max_datetime: '2018-08-01'
+
+
+# Specify the target
+target: 'bad_review_flag'
