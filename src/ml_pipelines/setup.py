@@ -167,8 +167,8 @@ class Setup:
                     stage='Archived'
                 )
 
-    @staticmethod
-    def _delete_registered_model(model_name):
+ 
+    def _delete_registered_model(self, model_name):
         """
         Delete a registered model from the MLflow Model Registry.
         
@@ -177,16 +177,14 @@ class Setup:
         """
 
         # Archive the model first
-        self._archive_registered_models(model_name)
-
-        # Get the registered model
-        model = client.get_registered_model(name=model_name)
+        self._archive_registered_model(model_name)  # Corrected method call
 
         # Delete the registered model
-        client.delete_registered_model(model.uuid)
+        client.delete_registered_model(name=model_name)
 
         # Log deletion of the model registry
         _logger.info(f"Deleted model from Mlflow registry: {model_name}")
+
 
     @staticmethod
     def _check_by_experiment_id(experiment_id):
@@ -313,9 +311,9 @@ class Setup:
             ] 
             for row in db_rows
         ]
-        
 
-        if table_name in tables:
+
+        if f'{db_name}.{table_name}' in tables:
             _logger.info(f'Table exists: {db_name}.{table_name} True')
             return True
 
@@ -361,7 +359,7 @@ class Setup:
         
         if self.config['drop_labels_table']:
             _logger.info('Checking existing labels table...')
-            labels_table_database_name = self.env_vars['labels_table_database_name']
+            labels_table_database_name = self.env_vars['reference_table_database_name']
             labels_table_name = self.env_vars['labels_table_name']
 
             if self._check_labels_table(labels_table_database_name, labels_table_name):
@@ -391,3 +389,7 @@ class Setup:
 
 setup_pipeline = Setup(config = pipeline_config, env_vars=env_vars)
 setup_pipeline.run()
+
+# COMMAND ----------
+
+
