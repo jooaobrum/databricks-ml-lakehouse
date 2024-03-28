@@ -1,4 +1,8 @@
 # Databricks notebook source
+import os
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC
 # MAGIC ## Setup
@@ -23,11 +27,21 @@ window_size = dbutils.widgets.get('window_size').split(',')
 
 # Feature Store table name
 table_name = f"{ref_name}_{task_key}_features"
-
+primary_keys = dbutils.widgets.get('primary_keys').split(',')
+feature_store_description = dbutils.widgets.get('feature_store_description')
 
 # Query's path to transform to fs
 base_query_path = f"feature_store_transformation/{task_key}_feature_store.sql"
+
 agg_query_path = f"feature_store_transformation/{task_key}_feature_store_agg.sql"
+
+# Check if the file exists
+if os.path.exists(agg_query_path):
+    # File exists, assign the path
+    pass  # No need to do anything, agg_query_path already set correctly
+else:
+    # File doesn't exist, set agg_query_path to None
+    agg_query_path = None
 
 # COMMAND ----------
 
@@ -45,10 +59,14 @@ agg_query_path = f"feature_store_transformation/{task_key}_feature_store_agg.sql
 
 def read_transf_query(path):
     # Read query 
-    with open(path, 'r') as f:
-        query = f.read()
+    if path != None:
+        with open(path, 'r') as f:
+            query = f.read()
 
-    return query
+        return query
+    
+    else:
+        None
 
 # COMMAND ----------
 
@@ -95,20 +113,27 @@ agg_query = read_transf_query(agg_query_path)
 # COMMAND ----------
 
 for date in tqdm(dates):
-    windows_dfs_list = []  # List to store DataFrames for the current date
-    for window in window_size:
-        df_feature_store_agg = spark.sql(agg_query.format(date=date, window=window))
-        windows_dfs_list.append(df_feature_store_agg)
-    
-    # Concatenate DataFrames for the current date horizontally (along columns)
-    df_feature_store_total = reduce(lambda df1, df2: df1.join(df2, on=["fs_reference_timestamp", "customer_unique_id"], how='inner'), windows_dfs_list)
 
     # Read base
     df_feature_store_base = spark.sql(base_query.format(date=date))
-    df_feature_store_base = df_feature_store_base.dropDuplicates(["fs_reference_timestamp", "customer_unique_id"])
+    df_feature_store_base = df_feature_store_base.dropDuplicates(primary_keys)
+
+    if agg_query != None:
+        windows_dfs_list = []  # List to store DataFrames for the current date
+        for window in window_size:
+            df_feature_store_agg = spark.sql(agg_query.format(date=date, window=window))
+            windows_dfs_list.append(df_feature_store_agg)
+        
+        
+        # Concatenate DataFrames for the current date horizontally (along columns)
+        df_feature_store_total = reduce(lambda df1, df2: df1.join(df2, on=primary_keys, how='inner'), windows_dfs_list)
+
     
-    # Merge them
-    df_feature_store_total = df_feature_store_total.join(df_feature_store_base, on=["fs_reference_timestamp", "customer_unique_id"], how='inner')
+        # Merge them
+        df_feature_store_total = df_feature_store_total.join(df_feature_store_base, on=primary_keys, how='inner')
+
+    else:
+        df_feature_store_total = df_feature_store_base
 
     # Check if table exists
     if spark.catalog.tableExists(f"{db_name}.{table_name}"):
@@ -116,10 +141,14 @@ for date in tqdm(dates):
     else:
         fs.create_table(
             name=f'{db_name}.{table_name}',
-            primary_keys=["fs_reference_timestamp", "customer_unique_id"], 
+            primary_keys=primary_keys, 
             df=df_feature_store_total,
             partition_columns=["fs_reference_timestamp"],
             schema=df_feature_store_total.schema,
-            description="Customer Features "
+            description=feature_store_description
         )
+
+
+# COMMAND ----------
+
 

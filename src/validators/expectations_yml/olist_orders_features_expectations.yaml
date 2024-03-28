@@ -1,0 +1,12 @@
+expectations:
+- expectation_type: expect_column_values_to_not_be_null
+  kwargs:
+    column: order_id
+    mostly: 0.99
+- expectation_type: expect_column_values_to_be_between
+  kwargs:
+    column: item_price
+    min_value: 0
+    max_value: null
+    mostly: 0.99
+
