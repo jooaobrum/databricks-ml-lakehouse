@@ -1,4 +1,4 @@
-# Mastering the Entire Data Stack with Databrciks
+# Mastering the Entire Data Stack with Databricks
 
 ## Welcome to the Repository of the Project!
 
