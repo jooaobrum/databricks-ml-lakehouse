@@ -186,6 +186,7 @@ df_orders  = spark.sql(
 """
     SELECT t1.order_purchase_timestamp,
            date_format(date_add(t1.order_purchase_timestamp, 1), 'yyyy-MM-dd') as fs_reference_timestamp,
+           t1.order_id,
            t2.customer_unique_id
            
     FROM silver.olist_orders as t1
@@ -201,44 +202,65 @@ df_orders  = spark.sql(
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC
+# MAGIC WITH orders_reviews_tb AS (
+# MAGIC   SELECT DISTINCT t1.order_purchase_timestamp,
+# MAGIC                   date_format(DATE_ADD(t1.order_purchase_timestamp, 1), 'yyyy-MM-dd') as fs_reference_timestamp,
+# MAGIC                   t2.customer_unique_id,
+# MAGIC                   t1.order_id,
+# MAGIC                   CASE WHEN t3.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
+# MAGIC
+# MAGIC   FROM silver.olist_orders AS t1
+# MAGIC   LEFT JOIN silver.olist_customers AS t2
+# MAGIC   ON t1.customer_id = t2.customer_id
+# MAGIC   LEFT JOIN silver.olist_order_reviews as t3
+# MAGIC   ON t1.order_id = t3.order_id
+# MAGIC   WHERE t2.customer_unique_id IS NOT NULL
+# MAGIC
+# MAGIC   )
+# MAGIC
+# MAGIC SELECT t1.* 
+# MAGIC
+# MAGIC FROM orders_reviews_tb as t1
+# MAGIC INNER JOIN feature_store.olist_customer_features as t2
+# MAGIC ON t1.fs_reference_timestamp = t2.fs_reference_timestamp
+# MAGIC AND t1.customer_unique_id = t2.customer_unique_id
+# MAGIC INNER JOIN feature_store.olist_orders_features as t3
+# MAGIC ON t1.order_id = t3.order_id
+# MAGIC     
+# MAGIC WHERE order_purchase_timestamp <= '2018-08-01'
+
+# COMMAND ----------
+
 df_target = spark.sql(
     """
 
 
-    WITH orders_reviews_tb AS (
-    SELECT DISTINCT t2.customer_unique_id,
-            date_format(date_add(order_purchase_timestamp, 1), 'yyyy-MM-dd') as order_purchase_timestamp,
-            t3.review_score
-    FROM silver.olist_orders AS t1
-    LEFT JOIN silver.olist_customers AS t2
-    ON t1.customer_id = t2.customer_id
-    LEFT JOIN silver.olist_order_reviews as t3
-    ON t1.order_id = t3.order_id
-    WHERE t2.customer_unique_id IS NOT NULL
-
-    ),
-
-    dataset as (
-
-    SELECT t1.fs_reference_timestamp,
-        t1.customer_unique_id,
-        --t2.review_score,
-        CASE WHEN t2.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
-
-    FROM feature_store.olist_customer_features as t1
-    INNER JOIN orders_reviews_tb as t2
-
-    ON t1.fs_reference_timestamp = t2.order_purchase_timestamp
-    AND t1.customer_unique_id = t2.customer_unique_id
-
     
+WITH orders_reviews_tb AS (
+  SELECT DISTINCT t1.order_purchase_timestamp,
+                  date_format(DATE_ADD(t1.order_purchase_timestamp, 1), 'yyyy-MM-dd') as fs_reference_timestamp,
+                  t2.customer_unique_id,
+                  t1.order_id,
+                  CASE WHEN t3.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
 
-    )
+  FROM silver.olist_orders AS t1
+  LEFT JOIN silver.olist_customers AS t2
+  ON t1.customer_id = t2.customer_id
+  LEFT JOIN silver.olist_order_reviews as t3
+  ON t1.order_id = t3.order_id
+  WHERE t2.customer_unique_id IS NOT NULL
 
-    SELECT *
-    FROM dataset
+  )
 
-    WHERE fs_reference_timestamp <= '2018-08-01'
+SELECT t1.* 
+
+FROM orders_reviews_tb as t1
+INNER JOIN feature_store.olist_customer_features as t2
+ON t1.fs_reference_timestamp = t2.fs_reference_timestamp
+    
+WHERE order_purchase_timestamp <= '2018-08-01'
 
     
 
@@ -270,7 +292,7 @@ df = df.toPandas()
 
 # COMMAND ----------
 
-df.head()
+df.isna().sum()
 
 # COMMAND ----------
 
