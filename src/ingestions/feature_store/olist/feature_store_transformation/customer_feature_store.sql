@@ -58,7 +58,7 @@ late_deliveries AS (
 
 customer_feature_store as (
   SELECT
-    '{date}' AS fs_reference_timestamp,
+    DATE_ADD(DATE('{date}'), -1) AS fs_reference_timestamp,
     t1.customer_unique_id,
     t1.days_since_first_order,
     t1.days_since_last_order,

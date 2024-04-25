@@ -17,7 +17,6 @@ WITH orders_items as (
 )
 
 SELECT 
-        '{date}' as fs_reference_timestamp,
         t1.*, 
        CASE WHEN t2.order_estimated_delivery_timestamp < t2.order_delivered_customer_timestamp THEN 1 ELSE 0 END as late_order
 

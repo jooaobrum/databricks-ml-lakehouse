@@ -123,14 +123,14 @@ agg_customers_payments as (
     COUNT(DISTINCT CASE WHEN t2.payment_type = 'debit_card' THEN t2.order_id END) AS total_debit_card_{window}_days
   FROM
     orders_by_customers_window AS t1
-    LEFT JOIN silver.olist_order_payments AS t2 ON t1.order_id = t2.order_id  -- Add the join condition here
+    LEFT JOIN silver.olist_order_payments AS t2 ON t1.order_id = t2.order_id 
   GROUP BY
     t1.customer_unique_id
 ),
 
 customer_feature_store as (
   SELECT
-    '{date}' AS fs_reference_timestamp,
+    DATE_ADD(DATE('{date}'), -1) AS fs_reference_timestamp,
     t1.customer_unique_id,
     t1.total_items_order_{window}_days,
     t1.total_orders_{window}_days,
