@@ -60,6 +60,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 
+from feature_engine.selection import RecursiveFeatureElimination
+
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, train_test_split
 from sklearn.feature_selection import RFE
 from sklearn.compose import ColumnTransformer
@@ -181,69 +183,18 @@ def log_run(gridsearch, features: list, experiment_name: str, run_name: str, run
 
 # COMMAND ----------
 
-df_orders  = spark.sql(
-
-"""
-    SELECT t1.order_purchase_timestamp,
-           date_format(date_add(t1.order_purchase_timestamp, 1), 'yyyy-MM-dd') as fs_reference_timestamp,
-           t1.order_id,
-           t2.customer_unique_id
-           
-    FROM silver.olist_orders as t1
-    LEFT JOIN silver.olist_customers as t2
-    ON t1.customer_id = t2.customer_id
-
-
-"""
-
-
-
-)
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC
-# MAGIC WITH orders_reviews_tb AS (
-# MAGIC   SELECT DISTINCT t1.order_purchase_timestamp,
-# MAGIC                   date_format(DATE_ADD(t1.order_purchase_timestamp, 1), 'yyyy-MM-dd') as fs_reference_timestamp,
-# MAGIC                   t2.customer_unique_id,
-# MAGIC                   t1.order_id,
-# MAGIC                   CASE WHEN t3.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
-# MAGIC
-# MAGIC   FROM silver.olist_orders AS t1
-# MAGIC   LEFT JOIN silver.olist_customers AS t2
-# MAGIC   ON t1.customer_id = t2.customer_id
-# MAGIC   LEFT JOIN silver.olist_order_reviews as t3
-# MAGIC   ON t1.order_id = t3.order_id
-# MAGIC   WHERE t2.customer_unique_id IS NOT NULL
-# MAGIC
-# MAGIC   )
-# MAGIC
-# MAGIC SELECT t1.* 
-# MAGIC
-# MAGIC FROM orders_reviews_tb as t1
-# MAGIC INNER JOIN feature_store.olist_customer_features as t2
-# MAGIC ON t1.fs_reference_timestamp = t2.fs_reference_timestamp
-# MAGIC AND t1.customer_unique_id = t2.customer_unique_id
-# MAGIC INNER JOIN feature_store.olist_orders_features as t3
-# MAGIC ON t1.order_id = t3.order_id
-# MAGIC     
-# MAGIC WHERE order_purchase_timestamp <= '2018-08-01'
-
-# COMMAND ----------
-
 df_target = spark.sql(
-    """
+"""
 
 
-    
-WITH orders_reviews_tb AS (
+
+
+WITH tb as (
   SELECT DISTINCT t1.order_purchase_timestamp,
-                  date_format(DATE_ADD(t1.order_purchase_timestamp, 1), 'yyyy-MM-dd') as fs_reference_timestamp,
-                  t2.customer_unique_id,
-                  t1.order_id,
-                  CASE WHEN t3.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
+                    CAST(date_format(t1.order_purchase_timestamp, 'yyyy-MM-dd') as DATE) as fs_reference_timestamp,
+                    t2.customer_unique_id,
+                    t1.order_id,
+                    CASE WHEN t3.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
 
   FROM silver.olist_orders AS t1
   LEFT JOIN silver.olist_customers AS t2
@@ -252,15 +203,21 @@ WITH orders_reviews_tb AS (
   ON t1.order_id = t3.order_id
   WHERE t2.customer_unique_id IS NOT NULL
 
-  )
+)
 
-SELECT t1.* 
+SELECT t1.*
 
-FROM orders_reviews_tb as t1
-INNER JOIN feature_store.olist_customer_features as t2
+FROM tb as t1
+INNER JOIN feature_store.olist_orders_features as t2
 ON t1.fs_reference_timestamp = t2.fs_reference_timestamp
-    
-WHERE order_purchase_timestamp <= '2018-08-01'
+AND t1.order_id = t2.order_id
+INNER JOIN feature_store.olist_customer_features as t3
+ON t1.fs_reference_timestamp = t3.fs_reference_timestamp
+AND t1.customer_unique_id = t3.customer_unique_id
+
+
+
+WHERE order_purchase_timestamp <= '2018-08-15'
 
     
 
@@ -269,22 +226,48 @@ WHERE order_purchase_timestamp <= '2018-08-01'
 
 # COMMAND ----------
 
-feature_lookups = [
-    feature_store.FeatureLookup(
-                                table_name='feature_store.olist_customer_features',
-                                lookup_key=['fs_reference_timestamp', 'customer_unique_id']
+feature_lookups_orders =    feature_store.FeatureLookup(
+                                table_name='feature_store.olist_orders_features',
+                                lookup_key=['order_id'],
+                                output_name='orders'
                                 )
-                   ]
 
+feature_lookups_customers = feature_store.FeatureLookup(
+                                table_name='feature_store.olist_customer_features',
+                                lookup_key=['fs_reference_timestamp', 'customer_unique_id'],
+                                output_name='customers'
+                                )
+    
+
+feature_lookups = [feature_lookups_orders, feature_lookups_customers]
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col
+
+feature_lookups = [
+ 
+    feature_store.FeatureLookup(
+        table_name='feature_store.olist_customer_features',
+        lookup_key=['fs_reference_timestamp', 'customer_unique_id'],
+        output_name='customers'
+    ),
+       feature_store.FeatureLookup(
+        table_name='feature_store.olist_orders_features',
+        lookup_key=['order_id'],
+        output_name='orders'
+    )
+]
 fs = feature_store.FeatureStoreClient()
 
 
-df = fs.create_training_set(df=df_target,
-                            feature_lookups=feature_lookups,
-                            label='bad_review_flag')
+training_set = fs.create_training_set(
+    df=df_target,
+    feature_lookups=feature_lookups,
+    label='bad_review_flag'
 
-df = df.load_df()
-
+)
+df = training_set.load_df()
 
 # COMMAND ----------
 
@@ -292,80 +275,40 @@ df = df.toPandas()
 
 # COMMAND ----------
 
-df.isna().sum()
+df = df.iloc[:, :-1]
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC #### Reading OOT
+df.head()
 
 # COMMAND ----------
 
-df_target_oot = spark.sql(
-    """
+from databricks.feature_store import FeatureStoreClient, FeatureLookup
 
 
-    WITH orders_reviews_tb AS (
-    SELECT DISTINCT t2.customer_unique_id,
-            date_format(date_add(order_purchase_timestamp, 1), 'yyyy-MM-dd') as order_purchase_timestamp,
-            t3.review_score
-    FROM silver.olist_orders AS t1
-    LEFT JOIN silver.olist_customers AS t2
-    ON t1.customer_id = t2.customer_id
-    LEFT JOIN silver.olist_order_reviews as t3
-    ON t1.order_id = t3.order_id
-    WHERE t2.customer_unique_id IS NOT NULL
+# COMMAND ----------
 
-    ),
-
-    dataset as (
-
-    SELECT t1.fs_reference_timestamp,
-        t1.customer_unique_id,
-        --t2.review_score,
-        CASE WHEN t2.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
-
-    FROM feature_store.olist_customer_features as t1
-    INNER JOIN orders_reviews_tb as t2
-
-    ON t1.fs_reference_timestamp = t2.order_purchase_timestamp
-    AND t1.customer_unique_id = t2.customer_unique_id
-
-    
-
+feature_lookups = []
+# Iterate over each feature name and create a FeatureLookup instance
+for feature_name in selected_features:
+    feature_lookup = FeatureLookup(
+        table_name='feature_store.olist_customer_features',
+        lookup_key=['fs_reference_timestamp', 'customer_unique_id'],
+        feature_names=feature_name
     )
 
-    SELECT *
-    FROM dataset
-
-
-    WHERE fs_reference_timestamp > '2018-08-01'
-
-    
-
-"""
-)
+    feature_lookups.append(feature_lookup)
 
 # COMMAND ----------
 
-feature_lookups = [
-    feature_store.FeatureLookup(
-                                table_name='feature_store.olist_customer_features',
-                                lookup_key=['fs_reference_timestamp', 'customer_unique_id']
-                                )
-                   ]
-
-fs = feature_store.FeatureStoreClient()
-df_oot = fs.create_training_set(df=df_target_oot,
-                            feature_lookups=feature_lookups,
-                            label='bad_review_flag')
-
-df_oot = df_oot.load_df()
-
+labels_df = spark.table("olist_bad_reviews_dev.labels")
 
 # COMMAND ----------
 
-df_oot = df_oot.toPandas()
+fs.create_training_set(df=labels_df,
+                                      feature_lookups=feature_lookups,
+                                      label='bad_review_flag',
+                                      exclude_columns=['fs_reference_timestamp', 'customer_unique_id'])
 
 # COMMAND ----------
 
@@ -387,6 +330,10 @@ df.describe()
 
 # COMMAND ----------
 
+df['bad_review_flag'].value_counts(normalize = True)
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC ### 4. Split Train-Test
 
@@ -401,7 +348,7 @@ variables = list(set(df.columns.tolist()) - set([target]))
 
 # Use train_test_split with stratification based on the target variable
 train_data, test_data, train_labels, test_labels = train_test_split(
-    df[variables], df[target], test_size=0.2, random_state=42, stratify=df[target]
+    df[variables], df[target], test_size=0.2, random_state=42
 )
 
 # COMMAND ----------
@@ -446,6 +393,15 @@ print(y_test.value_counts(normalize = True))
 
 # COMMAND ----------
 
+cols_to_remove = ['order_id', 'customer_unique_id' 'fs_reference_timestamp', 'order_purchase_timestamp']
+cols_to_remove = cols_to_remove + [var for var in variables if 'total' in var and ('items_90_days' in var or 'items_180_days' in var)]
+
+
+
+variables = list(set(variables) - set(cols_to_remove))
+
+# COMMAND ----------
+
 # Features to use imputer and scaler
 numeric_features = df[variables].select_dtypes(exclude = 'object').columns.tolist()
 
@@ -485,13 +441,13 @@ features_to_select = numeric_features + categorical_features
 # COMMAND ----------
 
 # Number of features to select with RFE
-num_features_to_select = 8  # You can adjust this number based on your preference
+num_features_to_select = 10  # You can adjust this number based on your preference
 
 # Updated pipeline
 pipeline = Pipeline(steps=[
     ('preprocessor', preprocessor),
     ('feature_selection', RFE(estimator=DecisionTreeClassifier(), 
-                              step = 15,    
+                              step = 1,    
                               n_features_to_select=num_features_to_select)),
 ])
 
@@ -513,7 +469,11 @@ print("Selected Features:", selected_features)
 
 selected_features = [feat.split('__')[1] for feat in selected_features if 'customer_state' not in feat.split('__')[1]]
 
-selected_features = selected_features + ['customer_state']
+selected_features = selected_features + ['customer_state', 'late_order']
+
+# COMMAND ----------
+
+selected_features
 
 # COMMAND ----------
 
@@ -530,7 +490,7 @@ selected_features = selected_features + ['customer_state']
 # COMMAND ----------
 
 # Create and fit a dummy classifier
-dummy_classifier = DummyClassifier(strategy="uniform")
+dummy_classifier = DummyClassifier(strategy="stratified")
 dummy_classifier.fit(X_train, y_train)
 
 # Make predictions
@@ -555,9 +515,6 @@ evaluate_model(dummy_classifier, X_test[selected_features], y_test)
 # Features to use imputer and scaler
 numeric_features = X_train[selected_features].select_dtypes(exclude = 'object').columns.tolist()
 
-
-# Features to conver to ordinal encoding
-#categorical_features = ['customer_state']
 
 
 # Numerical transformations
@@ -617,7 +574,7 @@ model = DecisionTreeClassifier(class_weight=class_weight_dict)
 # Grid Search for hyperparameters tuning
 grid_search = GridSearchCV( model, 
 							param_grid,
-							n_jobs = -1,
+							n_jobs = 1,
 							cv = skf,
 							scoring = 'roc_auc',
 							verbose = 3,
@@ -647,10 +604,6 @@ evaluate_model(pipeline, X_train[selected_features_final], y_train)
 # COMMAND ----------
 
 evaluate_model(pipeline, X_test[selected_features_final], y_test)
-
-# COMMAND ----------
-
-evaluate_model(pipeline, df_oot[selected_features_final], df_oot[target])
 
 # COMMAND ----------
 
@@ -699,7 +652,7 @@ plt.show()
 # COMMAND ----------
 
 experiment_name = "/Users/joaopaulo_brum@hotmail.com/mlflow-runs/Bad Review Model"
-run_description = 'DT with 8 features'
+run_description = 'DT with orders and customer features'
 
 
 # Run the experiment in mlflow
