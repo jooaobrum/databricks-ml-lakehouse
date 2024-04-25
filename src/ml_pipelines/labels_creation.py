@@ -99,46 +99,37 @@ class FeatureLabelsCreator:
         max_datetime = self.config.max_datetime
 
         query_to_train = """
-            WITH orders_reviews_tb AS (
-      SELECT DISTINCT
-              t1.order_purchase_timestamp,
-              t2.customer_unique_id,
-              date_format(date_add(t1.order_purchase_timestamp, 1), 'yyyy-MM-dd') as fs_reference_timestamp,
-              t3.review_score
-      FROM silver.olist_orders AS t1
-      LEFT JOIN silver.olist_customers AS t2
-      ON t1.customer_id = t2.customer_id
-      LEFT JOIN silver.olist_order_reviews as t3
-      ON t1.order_id = t3.order_id
-      WHERE t2.customer_unique_id IS NOT NULL
+            WITH tb as (
+                SELECT DISTINCT t1.order_purchase_timestamp,
+                                    CAST(date_format(t1.order_purchase_timestamp, 'yyyy-MM-dd') as DATE) as fs_reference_timestamp,
+                                    t2.customer_unique_id,
+                                    t1.order_id,
+                                    CASE WHEN t3.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
 
-      ),
+                FROM silver.olist_orders AS t1
+                LEFT JOIN silver.olist_customers AS t2
+                ON t1.customer_id = t2.customer_id
+                LEFT JOIN silver.olist_order_reviews as t3
+                ON t1.order_id = t3.order_id
+                WHERE t2.customer_unique_id IS NOT NULL
 
-      dataset as (
+                )
 
-      SELECT 
-          t2.order_purchase_timestamp,
-          t1.fs_reference_timestamp,
-          t1.customer_unique_id,
-          CASE WHEN t2.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
+            SELECT t1.*
 
-      FROM feature_store.olist_customer_features as t1
-      INNER JOIN orders_reviews_tb as t2
-
-      ON t1.fs_reference_timestamp = t2.fs_reference_timestamp
-      AND t1.customer_unique_id = t2.customer_unique_id
-
-  
-
-      )
-
-      SELECT *
-      FROM dataset
-
-      WHERE fs_reference_timestamp <= '{max_datetime}'
+            FROM tb as t1
+            INNER JOIN feature_store.olist_orders_features as t2
+            ON t1.order_id = t2.order_id
+            INNER JOIN feature_store.olist_customer_features as t3
+            ON t1.fs_reference_timestamp = t3.fs_reference_timestamp
+            AND t1.customer_unique_id = t3.customer_unique_id
 
 
-        """
+            WHERE t1.order_purchase_timestamp <= '{max_datetime}'
+
+
+
+"""
 
         query_to_train = query_to_train.format(max_datetime = max_datetime)
 
