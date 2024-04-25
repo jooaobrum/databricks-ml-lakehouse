@@ -2,7 +2,7 @@
 mlflow_params:
   
   # Name of the MLflow run
-  run_name: 'DT with 8 features'
+  run_name: 'DT 1st version '
 
 
 
@@ -13,8 +13,12 @@ pipeline_params:
     test_size: 0.2
     random_state: 42
     folds: 3
+    orders_variables: ['item_price','freight_price', 'total_price', 'pct_item_price','pct_freight_price', 'late_order']
+    
+    customers_variables: ['total_spent_freight_180_days', 'total_orders_delivered_180_days', 'avg_days_to_deliver', 'total_spent_price_180_days', 'total_spent_freight_90_days']
 
-    numeric_features: ['total_orders_delivered_90_days', 'total_orders_late_delivery', 'avg_days_to_deliver', 'total_spent_freight_90_days', 'total_spent_price_90_days', 'total_bed_bath_table_items_90_days', 'total_spent_price_180_days', 'total_spent_freight_180_days']
+    numeric_features: ['item_price', 'total_spent_freight_180_days', 'total_orders_delivered_180_days', 'avg_days_to_deliver',
+                      'total_spent_price_180_days', 'freight_price', 'total_spent_freight_90_days', 'total_price', 'pct_item_price', 'pct_freight_price', 'late_order']
     
     categoric_features: []
     
