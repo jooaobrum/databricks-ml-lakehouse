@@ -30,7 +30,7 @@ from delta_utils import check_and_write_to_delta_table
 # COMMAND ----------
 
 dt_start = dbutils.widgets.get('dt_start')
-dt_stop = dbutils.widgets.get('dt_start')
+dt_stop = dbutils.widgets.get('dt_stop')
 task_key = dbutils.widgets.get('task_key').split('_')[0]
 db_name = 'feature_store'
 ref = 'olist'
@@ -43,6 +43,10 @@ yml_expectations = f'expectations_yml/{validator_name}.yaml'
 # COMMAND ----------
 
 df = spark.sql("SELECT * FROM feature_store.{table_name} WHERE fs_reference_timestamp >= '{dt_start}' AND fs_reference_timestamp <= '{dt_stop}'".format(table_name = table_name, dt_start = dt_start, dt_stop = dt_stop)).toPandas()
+
+# COMMAND ----------
+
+print("SELECT * FROM feature_store.{table_name} WHERE fs_reference_timestamp >= '{dt_start}' AND fs_reference_timestamp <= '{dt_stop}'".format(table_name = table_name, dt_start = dt_start, dt_stop = dt_stop))
 
 # COMMAND ----------
 
