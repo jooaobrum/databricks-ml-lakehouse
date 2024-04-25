@@ -143,7 +143,6 @@ for date in tqdm(dates):
             name=f'{db_name}.{table_name}',
             primary_keys=primary_keys, 
             df=df_feature_store_total,
-            partition_columns=["fs_reference_timestamp"],
             schema=df_feature_store_total.schema,
             description=feature_store_description
         )
