@@ -45,7 +45,7 @@
 
 # COMMAND ----------
 
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, KFold, GroupKFold, StratifiedGroupKFold
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
@@ -186,38 +186,35 @@ def log_run(gridsearch, features: list, experiment_name: str, run_name: str, run
 df_target = spark.sql(
 """
 
-
-
-
 WITH tb as (
-  SELECT DISTINCT t1.order_purchase_timestamp,
-                    CAST(date_format(t1.order_purchase_timestamp, 'yyyy-MM-dd') as DATE) as fs_reference_timestamp,
-                    t2.customer_unique_id,
-                    t1.order_id,
-                    CASE WHEN t3.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
+                SELECT DISTINCT t1.order_purchase_timestamp,
+                                    CAST(date_format(t1.order_purchase_timestamp, 'yyyy-MM-dd') as DATE) as fs_reference_timestamp,
+                                    t2.customer_unique_id,
+                                    t1.order_id,
+                                    CASE WHEN t3.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
 
-  FROM silver.olist_orders AS t1
-  LEFT JOIN silver.olist_customers AS t2
-  ON t1.customer_id = t2.customer_id
-  LEFT JOIN silver.olist_order_reviews as t3
-  ON t1.order_id = t3.order_id
-  WHERE t2.customer_unique_id IS NOT NULL
+                FROM silver.olist_orders AS t1
+                LEFT JOIN silver.olist_customers AS t2
+                ON t1.customer_id = t2.customer_id
+                LEFT JOIN silver.olist_order_reviews as t3
+                ON t1.order_id = t3.order_id
+                WHERE t2.customer_unique_id IS NOT NULL
 
-)
+                )
 
-SELECT t1.*
+  SELECT t1.*
 
-FROM tb as t1
-INNER JOIN feature_store.olist_orders_features as t2
-ON t1.fs_reference_timestamp = t2.fs_reference_timestamp
-AND t1.order_id = t2.order_id
-INNER JOIN feature_store.olist_customer_features as t3
-ON t1.fs_reference_timestamp = t3.fs_reference_timestamp
-AND t1.customer_unique_id = t3.customer_unique_id
-
+  FROM tb as t1
+  INNER JOIN feature_store.olist_orders_features as t2
+  ON t1.order_id = t2.order_id
+  INNER JOIN feature_store.olist_customer_features as t3
+  ON t1.fs_reference_timestamp = t3.fs_reference_timestamp
+  AND t1.customer_unique_id = t3.customer_unique_id
 
 
-WHERE order_purchase_timestamp <= '2018-08-15'
+  WHERE t1.order_purchase_timestamp >= '2017-02-01'
+  AND t1.order_purchase_timestamp < '2018-06-01'
+
 
     
 
@@ -275,40 +272,7 @@ df = df.toPandas()
 
 # COMMAND ----------
 
-df = df.iloc[:, :-1]
-
-# COMMAND ----------
-
 df.head()
-
-# COMMAND ----------
-
-from databricks.feature_store import FeatureStoreClient, FeatureLookup
-
-
-# COMMAND ----------
-
-feature_lookups = []
-# Iterate over each feature name and create a FeatureLookup instance
-for feature_name in selected_features:
-    feature_lookup = FeatureLookup(
-        table_name='feature_store.olist_customer_features',
-        lookup_key=['fs_reference_timestamp', 'customer_unique_id'],
-        feature_names=feature_name
-    )
-
-    feature_lookups.append(feature_lookup)
-
-# COMMAND ----------
-
-labels_df = spark.table("olist_bad_reviews_dev.labels")
-
-# COMMAND ----------
-
-fs.create_training_set(df=labels_df,
-                                      feature_lookups=feature_lookups,
-                                      label='bad_review_flag',
-                                      exclude_columns=['fs_reference_timestamp', 'customer_unique_id'])
 
 # COMMAND ----------
 
@@ -331,6 +295,11 @@ df.describe()
 # COMMAND ----------
 
 df['bad_review_flag'].value_counts(normalize = True)
+
+# COMMAND ----------
+
+df['month'] = df['order_purchase_timestamp'].dt.month
+df['month'] = df['month'].astype(str)
 
 # COMMAND ----------
 
@@ -408,7 +377,7 @@ numeric_features = df[variables].select_dtypes(exclude = 'object').columns.tolis
 
 
 # Features to conver to ordinal encoding
-categorical_features = ['customer_state']
+categorical_features = ['customer_state', 'month']
 
 
 # Numerical transformations
@@ -441,7 +410,7 @@ features_to_select = numeric_features + categorical_features
 # COMMAND ----------
 
 # Number of features to select with RFE
-num_features_to_select = 10  # You can adjust this number based on your preference
+num_features_to_select = 15  # You can adjust this number based on your preference
 
 # Updated pipeline
 pipeline = Pipeline(steps=[
@@ -473,7 +442,22 @@ selected_features = selected_features + ['customer_state', 'late_order']
 
 # COMMAND ----------
 
-selected_features
+selected_features = ['total_orders_late_delivery',
+ 'item_price',
+ 'total_spent_freight_180_days',
+ 'avg_days_to_deliver',
+ 'total_spent_price_180_days',
+ 'freight_price',
+ 'total_spent_freight_90_days',
+ 'total_spent_price_90_days',
+ 'total_price',
+ 'total_items',
+ 'total_orders_delivered_90_days',
+ 'pct_item_price',
+ 'pct_freight_price',
+ 'month',
+ 'customer_state',
+ 'late_order']
 
 # COMMAND ----------
 
@@ -515,6 +499,7 @@ evaluate_model(dummy_classifier, X_test[selected_features], y_test)
 # Features to use imputer and scaler
 numeric_features = X_train[selected_features].select_dtypes(exclude = 'object').columns.tolist()
 
+categoric_features = ['month']
 
 
 # Numerical transformations
@@ -533,6 +518,7 @@ categorical_transformer = Pipeline(
 preprocessor = ColumnTransformer(
     transformers=[
         ("num", numeric_transformer, numeric_features, ),
+        #("cat", categorical_transformer, categoric_features),
       
     ],
     remainder='passthrough'
@@ -543,7 +529,7 @@ preprocessor = ColumnTransformer(
 
 # COMMAND ----------
 
-selected_features_final = numeric_features 
+selected_features_final = numeric_features
 
 # COMMAND ----------
 
@@ -620,6 +606,10 @@ skplt.metrics.plot_roc(y_test, y_probas)
 
 # COMMAND ----------
 
+pipeline[:-1].get_feature_names_out()
+
+# COMMAND ----------
+
 feature_names = [feat.split('__')[1] for feat in pipeline[:-1].get_feature_names_out()]
 
 # COMMAND ----------
@@ -652,8 +642,183 @@ plt.show()
 # COMMAND ----------
 
 experiment_name = "/Users/joaopaulo_brum@hotmail.com/mlflow-runs/Bad Review Model"
-run_description = 'DT with orders and customer features'
+run_description = 'Final DT'
 
 
 # Run the experiment in mlflow
 log_run(pipeline[-1], selected_features_final, experiment_name, run_description, grid_cv_res.index[0])
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Validation by Folds
+
+# COMMAND ----------
+
+best_model = pipeline.named_steps['gridsearch'].best_estimator_
+pipeline = Pipeline( steps = [('preprocessor', preprocessor),
+							  ('model', best_model)])
+
+# COMMAND ----------
+
+grid_cv_res.iloc[0]['params']
+
+# COMMAND ----------
+
+# Initialize lists to store validation results
+roc_auc_valid = []
+
+X_train['month_year'] = X_train['order_purchase_timestamp'].dt.strftime('%m-%Y')
+grouping_feature = 'month_year'
+
+
+
+# Initialize StratifiedKFold
+skf = StratifiedKFold(shuffle=True, n_splits=5).split(X=X_train, y=y_train)
+skf = StratifiedGroupKFold().split(X=X_train, y=y_train, groups=X_train[grouping_feature])
+# Iterate over each fold
+for fold, (index_train, index_valid) in enumerate(skf):
+    # validation models
+    model_fit = pipeline.fit(X_train.iloc[index_train, :-1][selected_features_final], y_train.iloc[index_train])
+    
+    # Calculate ROC AUC for validation set
+    roc_valid = roc_auc_score(y_train.iloc[index_valid], model_fit.predict_proba(X_train.iloc[index_valid, :-1][selected_features_final])[:, 1])
+    
+    # Store validation ROC AUC score
+    roc_auc_valid.append(roc_valid)
+
+# Calculate mean and standard deviation of validation ROC AUC scores
+mean_roc_valid = np.mean(roc_auc_valid)
+std_roc_valid = np.std(roc_auc_valid)
+
+# Calculate ±3 sigma
+lower_bound = mean_roc_valid - 3 * std_roc_valid
+upper_bound = mean_roc_valid + 3 * std_roc_valid
+
+# Print results
+print("Mean ROC AUC:", mean_roc_valid)
+print("Standard deviation of ROC AUC:", std_roc_valid)
+print("Lower bound:", lower_bound)
+print("Upper bound:", upper_bound)
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Out of Time Evaluation
+
+# COMMAND ----------
+
+df_oot = spark.sql(
+"""
+
+
+WITH tb as (
+                SELECT DISTINCT t1.order_purchase_timestamp,
+                                    CAST(date_format(t1.order_purchase_timestamp, 'yyyy-MM-dd') as DATE) as fs_reference_timestamp,
+                                    t2.customer_unique_id,
+                                    t1.order_id,
+                                    CASE WHEN t3.review_score < 3 THEN 1 ELSE 0 END as bad_review_flag
+
+                FROM silver.olist_orders AS t1
+                LEFT JOIN silver.olist_customers AS t2
+                ON t1.customer_id = t2.customer_id
+                LEFT JOIN silver.olist_order_reviews as t3
+                ON t1.order_id = t3.order_id
+                WHERE t2.customer_unique_id IS NOT NULL
+
+                )
+
+            SELECT t1.*
+
+            FROM tb as t1
+            INNER JOIN feature_store.olist_orders_features as t2
+            ON t1.order_id = t2.order_id
+            INNER JOIN feature_store.olist_customer_features as t3
+            ON t1.fs_reference_timestamp = t3.fs_reference_timestamp
+            AND t1.customer_unique_id = t3.customer_unique_id
+
+
+            WHERE t1.order_purchase_timestamp > '2018-06-01'
+
+
+"""
+)
+
+# COMMAND ----------
+
+from pyspark.sql.functions import col
+
+feature_lookups = [
+ 
+    feature_store.FeatureLookup(
+        table_name='feature_store.olist_customer_features',
+        lookup_key=['fs_reference_timestamp', 'customer_unique_id'],
+        output_name='customers'
+    ),
+       feature_store.FeatureLookup(
+        table_name='feature_store.olist_orders_features',
+        lookup_key=['order_id'],
+        output_name='orders'
+    )
+]
+fs = feature_store.FeatureStoreClient()
+
+
+oot_set = fs.create_training_set(
+    df=df_oot,
+    feature_lookups=feature_lookups,
+    label='bad_review_flag'
+
+)
+validation = oot_set.load_df().toPandas()
+
+# COMMAND ----------
+
+evaluate_model(pipeline, validation[selected_features_final], validation['bad_review_flag'])
+
+# COMMAND ----------
+
+def fold_validation(pipeline, cv, X_train, y_train):
+
+    # Initialize lists to store validation results
+    roc_auc_valid = []
+
+    X_train['month_year'] = X_train['order_purchase_timestamp'].dt.strftime('%m-%Y')
+    grouping_feature = 'month_year'
+
+
+    # Initialize StratifiedKFold
+    cv = StratifiedGroupKFold().split(X=X_train, y=y_train, groups=X_train[grouping_feature])
+    # Iterate over each fold
+    for fold, (index_train, index_valid) in enumerate(cv):
+        # validation models
+        model_fit = pipeline.fit(X_train.iloc[index_train, :-1][selected_features_final], y_train.iloc[index_train])
+        
+        # Calculate ROC AUC for validation set
+        roc_valid = roc_auc_score(y_train.iloc[index_valid], model_fit.predict_proba(X_train.iloc[index_valid, :-1][selected_features_final])[:, 1])
+        
+        # Store validation ROC AUC score
+        roc_auc_valid.append(roc_valid)
+
+    # Calculate mean and standard deviation of validation ROC AUC scores
+    mean_roc_valid = np.mean(roc_auc_valid)
+    std_roc_valid = np.std(roc_auc_valid)
+
+    # Calculate ±3 sigma
+    lower_bound = mean_roc_valid - 3 * std_roc_valid
+    upper_bound = mean_roc_valid + 3 * std_roc_valid
+
+    results_dict = {
+        "Validation Mean ROC AUC": mean_roc_valid,
+        "Standard deviation of ROC AUC": std_roc_valid,
+        "Lower bound": lower_bound,
+        "Upper bound": upper_bound
+    }
+
+    return results_dict
+
+
+# COMMAND ----------
+
+fold_validation(pipeline, X_train, y_train)
