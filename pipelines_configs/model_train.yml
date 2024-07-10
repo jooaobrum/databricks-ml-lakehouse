@@ -1,3 +1,8 @@
+# Training Date 
+training_params:
+  start_training_date: '2017-02-01'
+  end_training_date: '2018-06-01'
+
 # Parameters for MLflow tracking
 mlflow_params:
   
@@ -5,12 +10,9 @@ mlflow_params:
   run_name: 'DT 1st version '
 
 
-
-
-
 # Parameters for the machine learning pipeline
 pipeline_params:
-    test_size: 0.2
+    test_size: 0.3
     random_state: 42
     folds: 3
     orders_variables: ['item_price','freight_price', 'total_price', 'pct_item_price','pct_freight_price', 'late_order']
@@ -32,3 +34,4 @@ model_params:
     class_weight: {0: 0.5742431523306103, 1: 3.867313915857605}
     random_state: 42
 
+ 
