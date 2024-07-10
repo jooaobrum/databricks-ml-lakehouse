@@ -1,76 +1,22 @@
-# Databricks notebook source
-# MAGIC %md
-# MAGIC # Model Train
-
-# COMMAND ----------
-
-dbutils.widgets.dropdown('env','dev',['dev','staging', 'prod'], 'Environment')
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Imports
-
-# COMMAND ----------
-
-import pandas as pd
-import sklearn
-import mlflow
-from mlflow.models import infer_signature
-import databricks
-from databricks.feature_store import FeatureStoreClient, FeatureLookup
-from mlflow.pyfunc import PythonModel
 from dataclasses import dataclass
+import sys
+import os
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import (accuracy_score, precision_score, recall_score, 
-                             f1_score, roc_auc_score, average_precision_score)
+from mlflow.pyfunc import PythonModel
+from .utils.evaluation import ModelEvaluation
+from .utils.logger_utils import get_logger
+import mlflow
+from mlflow.models import infer_signature
+from databricks.sdk.runtime import *
+from databricks.feature_store import FeatureStoreClient, FeatureLookup
 
-import sys
-import pprint
-
-sys.path.insert(0, '../libs')
-from logger_utils import get_logger
-from loading_utils import load_and_set_env_vars, load_config
-
-# COMMAND ----------
 
 _logger = get_logger()
 fs = FeatureStoreClient()
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Load Pipeline & Config Params
-
-# COMMAND ----------
-
-# Set pipeline name
-pipeline_name = 'model_train'
-
-# Load pipeline config
-pipeline_config = load_config(pipeline_name)
-
-# Load env vars
-env_vars = load_and_set_env_vars(env = dbutils.widgets.get('env'))
-
-# Set pipeline params
-pipeline_params = pipeline_config['pipeline_params']
-
-# Set model params
-model_params = pipeline_config['model_params']
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Cfg Class
-
-# COMMAND ----------
 
 @dataclass
 class MlflowTrackingCfg:
@@ -94,36 +40,17 @@ class LabelTableCfg:
         
 
 
+@dataclass
+class ModelTrainConfig:
+    mlflow_tracking_cfg: MlflowTrackingCfg
+    feature_store_table_cfg: FeatureStoreTableCfg
+    labels_table_cfg: LabelTableCfg
+    pipeline_params: dict
+    model_params: dict
+    training_params: dict
+    conf: dict
+    env_vars: dict
 
-# COMMAND ----------
-
-# Set Mlflow configuration
-mlflow_tracking_cfg = MlflowTrackingCfg(run_name=pipeline_config['mlflow_params']['run_name'],
-                                        experiment_path=env_vars['model_train_experiment_path'],
-                                        model_name=env_vars['model_name'])
-
-
-# Set Features configuration
-feature_store_table_cfg = FeatureStoreTableCfg(database_name=env_vars['global_feature_store_database_name'],
-                                               table_name_customers=env_vars['feature_store_customers_table_name'],
-                                               table_name_orders = env_vars['feature_store_orders_table_name']
-,                                              primary_keys_customers = [env_vars['primary_key_customers_1'], env_vars               ['primary_key_customers_2']],
-                                               primary_keys_orders = [env_vars['primary_key_orders_1']])
-
-
-
-# Set Labels configuration
-labels_table_cfg = LabelTableCfg(database_name=env_vars['reference_table_database_name'],
-                                               table_name=env_vars['labels_table_name'],
-                                               target = env_vars['labels_table_col'])
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Model Train Pipeline Class
-
-# COMMAND ----------
 
 class ModelTrainPipeline:
 
@@ -163,15 +90,6 @@ class ModelTrainPipeline:
 
         return pipeline
     
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## ModelWrapper Class
-
-# COMMAND ----------
-
 class ModelWrapper(PythonModel):
     def __init__(self, trained_model): 
         self.model = trained_model
@@ -179,23 +97,7 @@ class ModelWrapper(PythonModel):
     def predict(self, context, model_input):
         return self.model.predict_proba(model_input)
 
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Model Train Class
-
-# COMMAND ----------
-
-@dataclass
-class ModelTrainConfig:
-    mlflow_tracking_cfg: MlflowTrackingCfg
-    feature_store_table_cfg: FeatureStoreTableCfg
-    labels_table_cfg: LabelTableCfg
-    pipeline_params: dict
-    model_params: dict
-    conf: dict
-    env_vars: dict
+    
 
 class ModelTrain:
     def __init__(self, cfg: ModelTrainConfig):
@@ -214,7 +116,6 @@ class ModelTrain:
     def _get_feature_table_lookup(self):
 
         feature_store_table_cfg = self.cfg.feature_store_table_cfg
-        pipeline_params_cfg = self.cfg.pipeline_params
 
         global_feature_store = feature_store_table_cfg.database_name
         feature_table_customers = feature_store_table_cfg.table_name_customers
@@ -223,7 +124,7 @@ class ModelTrain:
         primary_keys_customers = feature_store_table_cfg.primary_keys_customers
         primary_keys_orders = feature_store_table_cfg.primary_keys_orders
 
-        variables = cfg.pipeline_params['numeric_features'] + cfg.pipeline_params['categoric_features']
+        variables = self.cfg.pipeline_params['numeric_features'] + self.cfg.pipeline_params['categoric_features']
 
         # Define feature lookups
         feature_lookups = []
@@ -232,7 +133,7 @@ class ModelTrain:
 
  
         # Iterate over each feature name and create a FeatureLookup instance
-        for feature_name in cfg.pipeline_params['customers_variables']:
+        for feature_name in self.cfg.pipeline_params['customers_variables']:
             feature_lookup = FeatureLookup(
                 table_name='feature_store.olist_customer_features',
                 lookup_key=['fs_reference_timestamp', 'customer_unique_id'],
@@ -245,7 +146,7 @@ class ModelTrain:
 
 
         # Iterate over each feature name and create a FeatureLookup instance
-        for feature_name in cfg.pipeline_params['orders_variables']:
+        for feature_name in self.cfg.pipeline_params['orders_variables']:
             feature_lookup = FeatureLookup(
                 table_name='feature_store.olist_orders_features',
                 lookup_key=['order_id'],
@@ -264,13 +165,18 @@ class ModelTrain:
 
     def get_fs_training_set(self):
 
-        feature_store_table_cfg = self.cfg.feature_store_table_cfg
         labels_table_cfg = self.cfg.labels_table_cfg
+        training_params_cfg = self.cfg.training_params
         
 
         _logger.info(f'Loading labels from {labels_table_cfg.database_name}.{labels_table_cfg.table_name}')
 
-        labels_df = spark.table(f"{labels_table_cfg.database_name}.{labels_table_cfg.table_name}")
+        labels_df = spark.sql(f"""
+            SELECT * FROM {labels_table_cfg.database_name}.{labels_table_cfg.table_name}
+            WHERE order_purchase_timestamp >= '{training_params_cfg['start_training_date']}'
+            AND order_purchase_timestamp < '{training_params_cfg['end_training_date']}'
+        """)
+
 
         feature_lookups = self._get_feature_table_lookup()
 
@@ -286,18 +192,16 @@ class ModelTrain:
         
         
         return fs_training_set
-        
+    
 
     def create_train_test_split(self, fs_training_set):
         
         labels_table_cfg = self.cfg.labels_table_cfg
         pipeline_params_cfg = self.cfg.pipeline_params
-        env_vars_cfg = self.cfg.env_vars
 
-        variables = cfg.pipeline_params['numeric_features'] + cfg.pipeline_params['categoric_features']
+        variables = self.cfg.pipeline_params['numeric_features'] + self.cfg.pipeline_params['categoric_features']
 
         _logger.info('Load training set from Feature Store, converting to pandas DataFrame')
-
 
         df = fs_training_set.load_df()
     
@@ -318,40 +222,32 @@ class ModelTrain:
     
 
     def fit_pipeline(self, X_train, y_train):
+
         _logger.info('Creating sklearn pipeline...')
         pipeline = ModelTrainPipeline.create_train_pipeline(self.cfg.pipeline_params, self.cfg.model_params)
 
         _logger.info('Fitting sklearn DecisionTree...')
-        _logger.info(f'Model params: {pprint.pformat(self.cfg.model_params)}')
+        _logger.info(f'Model params: {self.cfg.model_params}')
         model = pipeline.fit(X_train, y_train)
 
         return model
 
      
-    def evaluate_model(self, pipeline, X_test, y_test):
 
-        # Make predictions on the test set
-        y_pred = pipeline.predict(X_test)
-        y_prob = pipeline.predict_proba(X_test)[:, 1]
+    
+    def save_dataset_as_artifact(self, dataset, dataset_name):
+        # Save as parquet
+        dataset.to_parquet(f'{dataset_name}.parquet.gzip',
+                         compression='gzip')  
+            
+        # Log as artifact
+        mlflow.log_artifact(f'{dataset_name}.parquet.gzip')
 
-        # Calculate evaluation metrics
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred)
-        recall = recall_score(y_test, y_pred)
-        f1 = f1_score(y_test, y_pred)
-        roc_auc = roc_auc_score(y_test, y_prob)
-        pr_auc = average_precision_score(y_test, y_prob)
+        # Remove the tmp file
+        os.remove(f'{dataset_name}.parquet.gzip')
 
-        evaluation_metrics = {
-            "Test Accuracy": accuracy,
-            "Test Precision": precision,
-            "Test Recall": recall,
-            "Test F1 Score": f1,
-            "Test ROC-AUC": roc_auc,
-            "Test PR-AUC": pr_auc
-        }
 
-        return evaluation_metrics
+
 
     
     def run(self):
@@ -396,8 +292,26 @@ class ModelTrain:
             # Log metrics for the test set
             _logger.info('==========Model Evaluation==========')
             _logger.info('Evaluating and logging metrics')
-            metrics = self.evaluate_model(model, X_test, y_test)
+
+            skf = StratifiedKFold(shuffle=True, n_splits=5).split(X=X_train, y=y_train)
+
+            metrics = ModelEvaluation.fold_validation(model, skf, X_train, y_train)
             mlflow.log_metrics(metrics)
+
+            # Retrieve train and test
+            train = X_train.copy()
+            train['bad_review_flag'] = y_train
+            test = X_test.copy()
+            test['bad_review_flag'] = y_test
+
+            _logger.info(f'Saving train and test as artifacts (parquet).')
+            # Save as artifact 
+            self.save_dataset_as_artifact(train, 'train')
+            self.save_dataset_as_artifact(test, 'test')
+
+
+
+
             
 
             # Register model to MLflow Model Registry if provided
@@ -408,29 +322,3 @@ class ModelTrain:
                                       name=mlflow_tracking_cfg.model_name)
 
         _logger.info('==========Model training completed==========')
-
-
-
-
-
-
-
-
-# COMMAND ----------
-
-cfg = ModelTrainConfig(mlflow_tracking_cfg=mlflow_tracking_cfg,
-                       feature_store_table_cfg=feature_store_table_cfg,
-                       labels_table_cfg=labels_table_cfg,
-                       pipeline_params=pipeline_params,
-                       model_params=model_params,
-                       conf=pipeline_config,    
-                       env_vars=env_vars       
-                      )
-
-
-model_train_pipeline = ModelTrain(cfg)
-model_train_pipeline.run()
-
-# COMMAND ----------
-
-

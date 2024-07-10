@@ -1,65 +1,14 @@
-# Databricks notebook source
-# MAGIC %md
-# MAGIC # Feature Table/Label Creator 
-
-# COMMAND ----------
-
-dbutils.widgets.dropdown('env','dev',['dev','staging', 'prod'], 'Environment')
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Imports
-
-# COMMAND ----------
-
-import sys
 from dataclasses import dataclass
+from .utils.logger_utils import get_logger
+import sys
 from typing import Dict, Any, Union, List
 from databricks.feature_store import FeatureLookup, FeatureStoreClient 
+from databricks.sdk.runtime import *
 
 
-
-sys.path.insert(0, '../libs')
-from logger_utils import get_logger
-from loading_utils import load_and_set_env_vars, load_config
-
-
-
-
-
-# COMMAND ----------
 
 _logger = get_logger()
 fs = FeatureStoreClient()
-
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Load Pipeline & Config Params
-# MAGIC
-
-# COMMAND ----------
-
-# Set pipeline name
-pipeline_name = 'labels_creation'
-
-# Load pipeline config
-pipeline_config = load_config(pipeline_name)
-
-# Load env vars
-env_vars = load_and_set_env_vars(env = dbutils.widgets.get('env'))
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Feature Classes
-# MAGIC
-
-# COMMAND ----------
 
 @dataclass
 class FeatureLabelsCreatorConfig:
@@ -84,13 +33,6 @@ class FeatureLabelsCreator:
         spark.sql(f'USE {db_name};')
         spark.sql(f"DROP TABLE IF EXISTS {table_name};")
 
-        # if 'feature_store' in db_name:
-        #     try: 
-        #         fs.drop_table(
-        #         name=f'{db_name}.{table_name}'
-        #         )
-        #     except:
-        #         pass
 
 
     def run_data_ingestion(self):
@@ -166,39 +108,3 @@ class FeatureLabelsCreator:
 
         _logger.info('==========Create Labels Table==========')
         self.create_label_table(input_df)
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Execute Pipeline
-# MAGIC
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC
-# MAGIC 1. Check if databases and tables exists and drop them
-# MAGIC 2. Data Ingestion with Labels 
-# MAGIC 3. Fetch Features from Feature Store
-# MAGIC 4. Write in a table the features
-# MAGIC 5. Write in a table the labels
-
-# COMMAND ----------
-
-# Define the config parameters
-cfg = FeatureLabelsCreatorConfig(
-                                 max_datetime=pipeline_config['max_datetime'],
-                                 target=pipeline_config['target'],
-                                 reference_database=env_vars['reference_table_database_name'],
-                                 labels_table_name=env_vars['labels_table_name'])
-
-# Creathe the feature table object
-feature_table_creator_pipeline = FeatureLabelsCreator(cfg)
-
-# Run the pipeline
-feature_table_creator_pipeline.run()
-
-# COMMAND ----------
-
-

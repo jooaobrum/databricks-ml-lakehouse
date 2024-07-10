@@ -1,6 +1,5 @@
 import logging
 
-
 class NoReceivedCommandFilter(logging.Filter):
     def filter(self, record):
         if 'Received command c' not in record.getMessage():

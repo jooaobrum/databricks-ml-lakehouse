@@ -1,60 +1,17 @@
-# Databricks notebook source
-# MAGIC %md
-# MAGIC # Setup for Deployment
-
-# COMMAND ----------
-
-dbutils.widgets.dropdown('env','dev',['dev','staging', 'prod'], 'Environment')
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Imports
-
-# COMMAND ----------
-
 import mlflow
 from databricks.feature_store.client import FeatureStoreClient
+from databricks.sdk.runtime import *
 from mlflow.tracking import MlflowClient
 from mlflow.exceptions import RestException
 import sys
+from .utils.logger_utils import get_logger
 
-sys.path.insert(0, '../libs')
-from logger_utils import get_logger
-from loading_utils import load_and_set_env_vars, load_config
-
-
-# COMMAND ----------
 
 client = mlflow.MlflowClient()
 fs = FeatureStoreClient()
 _logger = get_logger()
 
 
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Load Pipeline & Config Params
-
-# COMMAND ----------
-
-# Set pipeline name
-pipeline_name = 'setup'
-
-
-# Load pipeline config 
-pipeline_config = load_config(pipeline_name)
-
-# Load env vars
-env_vars = load_and_set_env_vars(env=dbutils.widgets.get('env'))
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ###  Setup Pipeline Class 
-
-# COMMAND ----------
 
 class Setup:
     """
@@ -366,30 +323,4 @@ class Setup:
                 self._delete_labels_table(labels_table_database_name, labels_table_name)
 
         _logger.info('==========Setup Complete=========')
-
-
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ### Execute Pipeline
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC Run flow:
-# MAGIC 1. Check if model registry exists
-# MAGIC 2. Delete the model registry (archive models)
-# MAGIC 3. Check if model experiments exists in train/deploy
-# MAGIC 4. Delete the model experiments
-# MAGIC 5. Check if a table containing the labels exists
-# MAGIC 6. Delete the label table
-
-# COMMAND ----------
-
-setup_pipeline = Setup(config = pipeline_config, env_vars=env_vars)
-setup_pipeline.run()
-
-# COMMAND ----------
-
 
