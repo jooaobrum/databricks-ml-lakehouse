@@ -9,9 +9,8 @@ SELECT  product_id,
         product_height_cm,
         product_width_cm,
         product_length_cm*product_height_cm*product_width_cm as product_vol_cm3,
-        '{ingestor_file}' as table_ingestor_file,
         '{task_key}_silver_ingestion' as table_task_key, 
-        current_timestamp() as table_ingestor_timestamp
+        DATE_FORMAT(current_timestamp(), 'yyyy-MM-dd') as dt_ingestion           
            
 
 FROM {view_tmp}
