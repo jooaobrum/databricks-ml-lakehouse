@@ -6,10 +6,10 @@
 # COMMAND ----------
 
 # Task key definition - match with raw table name
-task_key = dbutils.widgets.get('task_key')
+task_key = dbutils.widgets.get('task_key').split('__')[1]
 
 # Name of the database to ingest
-db_name = 'bronze'
+db_name = 'olist_bronze'
 
 # Reference of the data
 ref_name = 'olist'
@@ -24,10 +24,13 @@ raw_table_name = task_key
 table_name = f'{ref_name}_{raw_table_name}'
 
 # File's path in the landing zone
-raw_path = f"/mnt/landing_zone/olist/{raw_table_name}.csv"
+raw_path = f"/mnt/datalake/{ref_name}/0-lz/{table_name}.csv"
 
 # Schema path
-schema_path = f'schemas/{raw_table_name}_schema.json'
+schema_path = f"/mnt/datalake/{ref_name}/0-lz-schemas/{table_name}_schema.json"
+
+# Output path
+bronze_path = f"/mnt/datalake/{ref_name}/1-bronze/{table_name}"
 
 # Reading options 
 read_opt = {
@@ -60,7 +63,7 @@ from pyspark.sql.types import StructType
 
 def load_schema(schema_path):
     # Read pre-defined Schema 
-    with open(schema_path, 'r') as f:
+    with open('/dbfs' + schema_path, 'r') as f:
         schema = f.read()
 
     # Correct schema
@@ -125,7 +128,7 @@ query_to_ingest = """
     SELECT  *,
             '{ingestor_file}' as table_ingestor_file,
             '{task_key}_bronze_ingestion' as table_task_key, 
-            current_timestamp() as table_ingestor_timestamp
+            DATE_FORMAT(current_timestamp(), 'yyyy-MM-dd') as dt_ingestion
            
 
            FROM {view_tmp}
@@ -142,18 +145,21 @@ df_ingestion = spark.sql(query_to_ingest.format(ingestor_file = ingestor_file, t
 
 # COMMAND ----------
 
-# Save full table
-writer = (
-            df_ingestion.coalesce(1)
-                        .write.format("delta")
-                        .mode("overwrite")
-                        .option("overwriteSchema", "true")
-        )
-
-# Check if table exists
+# Check if the table exists
 if spark.catalog.tableExists(f"{db_name}.{table_name}"):
     print('Table exists, not performing full ingestion.')
 else:
     print("Table doesn't exist, performing first full ingestion.")
-    writer.saveAsTable(f"{db_name}.{table_name}")
+    
+    # Save full table
+    (
+        df_ingestion
+            .write
+            .partitionBy("dt_ingestion") 
+            .format("delta")
+            .mode("overwrite")
+            .option("overwriteSchema", "true")
+            .option("path", bronze_path)
+            .saveAsTable(f"{db_name}.{table_name}")
+    )
 

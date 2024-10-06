@@ -5,21 +5,23 @@
 # COMMAND ----------
 
 # Task key to automate the workflow 
-task_key = dbutils.widgets.get('task_key')
+task_key = dbutils.widgets.get('task_key').split('__')[1]
 
-# Name of the database to ingest
-db_name = 'silver'
+# Name of the database bronze
+bronze_db_name = 'olist_bronze'
+silver_db_name = 'olist_silver'
 
 # Reference of the data
 ref_name = 'olist'
 
 # Bronze table name
 table_name = f"{ref_name}_{task_key}"
+bronze_table_name = f"{bronze_db_name}.{table_name}"
 
-bronze_table_name = f"bronze.{table_name}"
 
 # Silver table to ingest
-silver_table_to_ingest = f"silver.{table_name}"
+silver_table_to_ingest = f"{silver_db_name}table.{table_name}"
+silver_path = f"/mnt/datalake/{ref_name}/2-silver/{table_name}"
 
 
 # Query's path to transform to silver
@@ -83,19 +85,20 @@ df_norm = spark.sql(transf_query.format(ingestor_file = ingestor_file, task_key 
 
 # COMMAND ----------
 
-# Save full table
-writer = (
-                 df_norm.coalesce(1)
-                        .write
-                        .format("delta")
-                        .mode("overwrite")
-                        .option("overwriteSchema", "true")
-        )
-
-# Check if table exists
-if spark.catalog.tableExists(f"{db_name}.{table_name}"):
+# Check if the table exists
+if spark.catalog.tableExists(f"{silver_db_name}.{table_name}"):
     print('Table exists, not performing full ingestion.')
 else:
     print("Table doesn't exist, performing first full ingestion.")
-    writer.saveAsTable(f"{silver_table_to_ingest}")
-
+    
+    # Save full table
+    (
+        df_norm
+            .write
+            .partitionBy("dt_ingestion") 
+            .format("delta")
+            .mode("overwrite")
+            .option("overwriteSchema", "true")
+            .option("path", silver_path)
+            .saveAsTable(f"{silver_db_name}.{table_name}")
+    )
