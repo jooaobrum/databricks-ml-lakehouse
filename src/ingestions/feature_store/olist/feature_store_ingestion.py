@@ -1,45 +1,30 @@
 # Databricks notebook source
+# MAGIC %pip install tqdm
+# MAGIC %pip install pyyaml
+
+# COMMAND ----------
+
+dbutils.library.restartPython()
+
+# COMMAND ----------
+
 # MAGIC %md
 # MAGIC
 # MAGIC ## Setup
 
 # COMMAND ----------
 
-# Task key to automate the workflow 
+# Get dbutils parameters
 task_key = dbutils.widgets.get('task_key')
-
-# Name of the database to ingest
-db_name = 'feature_store'
-
-# Reference of the data
-ref_name = 'olist'
-
 dt_start = dbutils.widgets.get('dt_start')
 dt_stop = dbutils.widgets.get('dt_stop')
 step = int(dbutils.widgets.get('step'))
-
-# Aggregated feature window
-window_size = dbutils.widgets.get('window_size').split(',')
-
-# Feature Store table name
-table_name = f"{ref_name}_{task_key}_features"
-
-
-# Query's path to transform to fs
-base_query_path = f"feature_store_transformation/{task_key}_feature_store.sql"
-agg_query_path = f"feature_store_transformation/{task_key}_feature_store_agg.sql"
 
 # COMMAND ----------
 
 # MAGIC %md
 # MAGIC
 # MAGIC ## Starting Feature Store Ingestion
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC
-# MAGIC ### Functions
 
 # COMMAND ----------
 
@@ -67,59 +52,37 @@ def generate_dates(date_start, date_stop, step):
 # COMMAND ----------
 
 import datetime
-from databricks import feature_store
 from functools import reduce
 from tqdm import tqdm
+import yaml
+
 
 # COMMAND ----------
 
-# Initiate Feature Store Object
-fs = feature_store.FeatureStoreClient()
+# Load YAML config file
+with open('feature_store_ingestion.yaml', 'r') as file:
+    config = yaml.safe_load(file)
 
-# COMMAND ----------
+
+# Placeholders
+db_name = config['db_name']
+ref_name = config['ref_name']
+table_name = config['table_name'].replace("{task_key}", task_key)
+fs_path = config['fs_path'].replace("{task_key}", task_key)
+base_query_path = config['base_query_path'].replace("{task_key}", task_key)
 
 # Generate dates
 dates = generate_dates(dt_start, dt_stop, step)
 
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC
-# MAGIC ### Read Queries
-
-# COMMAND ----------
-
+# Read query to apply transformation
 base_query = read_transf_query(base_query_path)
-agg_query = read_transf_query(agg_query_path)
-
-# COMMAND ----------
 
 for date in tqdm(dates):
-    windows_dfs_list = []  # List to store DataFrames for the current date
-    for window in window_size:
-        df_feature_store_agg = spark.sql(agg_query.format(date=date, window=window))
-        windows_dfs_list.append(df_feature_store_agg)
-    
-    # Concatenate DataFrames for the current date horizontally (along columns)
-    df_feature_store_total = reduce(lambda df1, df2: df1.join(df2, on=["fs_reference_timestamp", "customer_unique_id"], how='inner'), windows_dfs_list)
-
     # Read base
-    df_feature_store_base = spark.sql(base_query.format(date=date))
-    df_feature_store_base = df_feature_store_base.dropDuplicates(["fs_reference_timestamp", "customer_unique_id"])
-    
-    # Merge them
-    df_feature_store_total = df_feature_store_total.join(df_feature_store_base, on=["fs_reference_timestamp", "customer_unique_id"], how='inner')
-
-    # Check if table exists
+    df_feature_store_base = spark.sql(base_query.format(dt_ingestion=date))
+  
+    # Check if table exists and write accordingly
     if spark.catalog.tableExists(f"{db_name}.{table_name}"):
-        fs.write_table(name=f'{db_name}.{table_name}', df=df_feature_store_total, mode='merge')
+        df_feature_store_base.write.format("delta").mode("append").saveAsTable(f"{db_name}.{table_name}")
     else:
-        fs.create_table(
-            name=f'{db_name}.{table_name}',
-            primary_keys=["fs_reference_timestamp", "customer_unique_id"], 
-            df=df_feature_store_total,
-            partition_columns=["fs_reference_timestamp"],
-            schema=df_feature_store_total.schema,
-            description="Customer Features "
-        )
-
+        df_feature_store_base.write.format("delta").mode("overwrite").option("mergeSchema", "true").saveAsTable(f"{db_name}.{table_name}")
