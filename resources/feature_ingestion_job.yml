@@ -1,0 +1,36 @@
+# The main job for databricks_olist.
+resources:
+  jobs:
+    feature_store_ingestion_pipeline:
+      name: Feature Ingestion Pipeline
+
+      tasks:
+        - task_key: orders_delivered
+          existing_cluster_id: 1006-130332-ldg0r5wp
+          notebook_task:
+            notebook_path: ../src/ingestions/feature_store/olist/feature_store_ingestion.py
+            base_parameters:
+              task_key: "{{task.name}}"
+              dt_start: 2018-10-11
+              dt_stop: 2018-10-17
+              step: "1"
+
+        - task_key: products
+          existing_cluster_id: 1006-130332-ldg0r5wp
+          notebook_task:
+            notebook_path: ../src/ingestions/feature_store/olist/feature_store_ingestion.py
+            base_parameters:
+              task_key: "{{task.name}}"
+              dt_start: 2018-10-11
+              dt_stop: 2018-10-17
+              step: "1"
+            
+        - task_key: seller_review_hist
+          existing_cluster_id: 1006-130332-ldg0r5wp
+          notebook_task:
+            notebook_path: ../src/ingestions/feature_store/olist/feature_store_ingestion.py            
+            base_parameters:
+              task_key: "{{task.name}}"
+              dt_start: 2018-10-11
+              dt_stop: 2018-10-17
+              step: "1"
