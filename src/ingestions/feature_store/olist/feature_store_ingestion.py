@@ -1,88 +1,44 @@
 # Databricks notebook source
-# MAGIC %pip install tqdm
-# MAGIC %pip install pyyaml
 
-# COMMAND ----------
+from components.feature_creator import FeatureCreatorConfig, FeatureCreator
+from components.utils.loading import load_config
+import logging
 
-dbutils.library.restartPython()
+# Set up logging
+logger = logging.getLogger(__name__)
 
-# COMMAND ----------
+def main():
+    """
+    Main function to initialize and run the feature store ingestion pipeline.
+    """
+    # Define the pipeline name
+    pipeline_name = 'feature_store_ingestion'
+    logger.info(f"Initializing pipeline: {pipeline_name}")
+    
+    # Load pipeline configuration
+    pipeline_config = load_config(pipeline_name)
+    logger.info("Pipeline configuration loaded successfully.")
+    
+    # Initialize configuration object
+    cfg = FeatureCreatorConfig(
+        ref_name=pipeline_config['ref_name'],
+        db_name=pipeline_config['db_name'],
+        table_name=pipeline_config['table_name'].format(task_key = dbutils.widgets.get('task_key')),
+        fs_path=pipeline_config['fs_path'].format(task_key = dbutils.widgets.get('task_key')),
+        base_query_path=pipeline_config['base_query_path'].format(task_key = dbutils.widgets.get('task_key')),
+        task_key=dbutils.widgets.get('task_key'),
+        dt_start=dbutils.widgets.get('dt_start'),
+        dt_stop=dbutils.widgets.get('dt_stop'),
+        step=int(dbutils.widgets.get('step'))
+    )
+    logger.info("FeatureCreatorConfig initialized successfully.")
+    
+    # Initialize and run the feature creation pipeline
+    feature_table_creator_pipeline = FeatureCreator(cfg)
+    logger.info("Starting FeatureCreator pipeline execution.")
+    
+    feature_table_creator_pipeline.run()
+    logger.info("FeatureCreator pipeline executed successfully.")
 
-# MAGIC %md
-# MAGIC
-# MAGIC ## Setup
-
-# COMMAND ----------
-
-# Get dbutils parameters
-task_key = dbutils.widgets.get('task_key')
-dt_start = dbutils.widgets.get('dt_start')
-dt_stop = dbutils.widgets.get('dt_stop')
-step = int(dbutils.widgets.get('step'))
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC
-# MAGIC ## Starting Feature Store Ingestion
-
-# COMMAND ----------
-
-def read_transf_query(path):
-    # Read query 
-    with open(path, 'r') as f:
-        query = f.read()
-
-    return query
-
-# COMMAND ----------
-
-def generate_dates(date_start, date_stop, step):
-    # Convert dtStart and dtStop to datetime
-    date_start = datetime.datetime.strptime(date_start, '%Y-%m-%d')
-    date_stop = datetime.datetime.strptime(date_stop, '%Y-%m-%d')
-
-    # Generate dates
-    n_days = (date_stop - date_start).days + 1
-    dates = [datetime.datetime.strftime(date_start + datetime.timedelta(days = i), '%Y-%m-%d') for i in range(0,n_days, step)]
-
-
-    return dates
-
-# COMMAND ----------
-
-import datetime
-from functools import reduce
-from tqdm import tqdm
-import yaml
-
-
-# COMMAND ----------
-
-# Load YAML config file
-with open('feature_store_ingestion.yaml', 'r') as file:
-    config = yaml.safe_load(file)
-
-
-# Placeholders
-db_name = config['db_name']
-ref_name = config['ref_name']
-table_name = config['table_name'].replace("{task_key}", task_key)
-fs_path = config['fs_path'].replace("{task_key}", task_key)
-base_query_path = config['base_query_path'].replace("{task_key}", task_key)
-
-# Generate dates
-dates = generate_dates(dt_start, dt_stop, step)
-
-# Read query to apply transformation
-base_query = read_transf_query(base_query_path)
-
-for date in tqdm(dates):
-    # Read base
-    df_feature_store_base = spark.sql(base_query.format(dt_ingestion=date))
-  
-    # Check if table exists and write accordingly
-    if spark.catalog.tableExists(f"{db_name}.{table_name}"):
-        df_feature_store_base.write.format("delta").mode("append").saveAsTable(f"{db_name}.{table_name}")
-    else:
-        df_feature_store_base.write.format("delta").mode("overwrite").option("mergeSchema", "true").saveAsTable(f"{db_name}.{table_name}")
+if __name__ == "__main__":
+    main()
