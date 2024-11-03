@@ -1,0 +1,120 @@
+resources:
+  jobs:
+    olist_ingestion_pipeline:
+      name: Olist Ingestion Pipeline
+      max_concurrent_runs: 3
+      tasks:
+        - task_key: bronze__customers
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/bronze/olist/bronze_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: bronze__geolocation
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/bronze/olist/bronze_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: bronze__order_items
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/bronze/olist/bronze_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: bronze__order_payments
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/bronze/olist/bronze_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: bronze__order_reviews
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/bronze/olist/bronze_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: bronze__orders
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/bronze/olist/bronze_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: bronze__products
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/bronze/olist/bronze_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: bronze__sellers
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/bronze/olist/bronze_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: silver__customers
+          depends_on:
+            - task_key: bronze__customers
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/silver/olist/silver_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: silver__geolocation
+          depends_on:
+            - task_key: bronze__geolocation
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/silver/olist/silver_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: silver__order_items
+          depends_on:
+            - task_key: bronze__order_items
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/silver/olist/silver_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: silver__order_payments
+          depends_on:
+            - task_key: bronze__order_payments
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/silver/olist/silver_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: silver__order_reviews
+          depends_on:
+            - task_key: bronze__order_reviews
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/silver/olist/silver_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: silver__orders
+          depends_on:
+            - task_key: bronze__orders
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/silver/olist/silver_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: silver__products
+          depends_on:
+            - task_key: bronze__products
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/silver/olist/silver_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        - task_key: silver__sellers
+          depends_on:
+            - task_key: bronze__sellers
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ingestions/silver/olist/silver_ingestion
+            base_parameters:
+              task_key: "{{task.name}}"
+          existing_cluster_id: 1006-130332-ldg0r5wp
+      queue:
+        enabled: true
