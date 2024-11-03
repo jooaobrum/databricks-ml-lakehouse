@@ -1,4 +1,3 @@
-# The main job for databricks_olist.
 resources:
   jobs:
     feature_store_ingestion_pipeline:
