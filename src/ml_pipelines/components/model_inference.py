@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from pyspark.sql import functions as F
 from pyspark.sql.functions import lit
-
+from lime.lime_tabular import LimeTabularExplainer
+import dill
+import os
 
 
 # Initialize logger
@@ -29,6 +31,7 @@ class InferenceTableCfg:
     inference_query: str
     output_db: str
     output_table_name: str
+
 
 @dataclass
 class ModelInferenceCfg:
@@ -73,6 +76,7 @@ class ModelInference:
             _logger.error(f"Error reading query file: {e}")
             raise
 
+
     def load_model(self):
         """
         Loads the latest version of the registered MLflow model using the specified model name and stage.
@@ -102,9 +106,11 @@ class ModelInference:
                 "stage": model_stage,
                 "creation_timestamp": model_version_info.creation_timestamp,
                 "last_updated_timestamp": model_version_info.last_updated_timestamp,
-                "description": model_version_info.description
+                "description": model_version_info.description,
+                "run_id": model_version_info.run_id
             }
 
+          
 
             return latest_model, metadata
 
@@ -115,6 +121,7 @@ class ModelInference:
             _logger.error(f"Error loading model: {e}")
             raise
 
+   
     def load_input_df(self):
         """
         Loads input data for inference by executing a SQL query with date filters.
@@ -148,6 +155,8 @@ class ModelInference:
         output_df = spark.createDataFrame(input_df)
         return output_df
     
+    
+
     def run(self):
         """
         Executes batch model inference and writes predictions to a Delta table, 

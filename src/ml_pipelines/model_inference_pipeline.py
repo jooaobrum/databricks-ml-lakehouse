@@ -4,6 +4,7 @@
 # MAGIC %pip install --upgrade pandas 
 # MAGIC %pip install mlflow
 # MAGIC %pip install imbalanced-learn
+# MAGIC
 
 # COMMAND ----------
 
@@ -14,6 +15,8 @@ import logging
 
 # Set up logging
 logger = logging.getLogger()
+
+
 
 
 def main():
@@ -32,8 +35,8 @@ def main():
     cfg = ModelInferenceCfg(
     mlflow_tracking_cfg=pipeline_config['mlflow_tracking_cfg'],
     inference_table_cfg=pipeline_config['inference_table_cfg'],
-    dt_start = dbutils.widgets.get("dt_start"),
-    dt_stop = dbutils.widgets.get("dt_stop")
+    dt_start = dbutils.widgets.get('dt_start'),
+    dt_stop = dbutils.widgets.get('dt_stop')
     )
 
     logger.info("ModelInferenceCfg initialized successfully.")
