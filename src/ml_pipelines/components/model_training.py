@@ -220,12 +220,13 @@ class ModelTrain:
         Returns:
             tuple: Splits for training and testing.
         """
+        # Use dot notation to access configuration attributes
         variables = self.cfg.pipeline_params['numerical_features'] + self.cfg.pipeline_params['categorical_features']
-        target = self.cfg.labels_table_cfg['target']
+        target = self.cfg.labels_table_cfg.target
         dt_start = self.cfg.training_params['dt_start']
         dt_stop = self.cfg.training_params['dt_stop']
-        
 
+        # Convert the training set to a pandas DataFrame for date filtering
         train = fs_training_set.toPandas()
         train['dt_ref'] = pd.to_datetime(train['dt_ref'])
         
@@ -310,3 +311,4 @@ class ModelTrain:
                 mlflow.register_model(f'runs:/{mlflow_run.info.run_id}/fs_model', name=self.cfg.mlflow_tracking_cfg['model_name'])
 
         _logger.info('Model training completed.')
+

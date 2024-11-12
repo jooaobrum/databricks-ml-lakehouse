@@ -1,0 +1,12 @@
+mlflow_tracking_cfg:
+  model_name: 'olist_bad_reviews'
+  model_stage: 'Staging'
+
+inference_table_cfg:
+  inference_query: 'inference_query.sql'
+  output_db: bad_review_uc
+  output_table_name: inference
+  inference_threshold: 0.5
+
+
+
