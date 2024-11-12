@@ -6,6 +6,8 @@ import pandas as pd
 from dataclasses import dataclass
 from datetime import datetime
 from pyspark.sql import functions as F
+from pyspark.sql.functions import lit
+
 
 
 # Initialize logger
@@ -35,9 +37,11 @@ class ModelInferenceCfg:
     """
     mlflow_tracking_cfg: MlflowTrackingCfg
     inference_table_cfg: InferenceTableCfg
+    dt_start: str
+    dt_stop: str
 
 class ModelInference:
-    def __init__(self, cfg: ModelInferenceCfg, dt_start, dt_stop):
+    def __init__(self, cfg: ModelInferenceCfg):
         """
         Initialize the model inference with configuration settings.
 
@@ -47,8 +51,7 @@ class ModelInference:
             dt_stop (str): Stop date for data filtering.
         """
         self.cfg = cfg
-        self.dt_start = dt_start
-        self.dt_stop = dt_stop
+    
 
     def read_query(self, path: str) -> str:
         """
@@ -77,21 +80,34 @@ class ModelInference:
         Returns:
             Tuple[mlflow.pyfunc.PyFuncModel, int, str]: Loaded MLflow model, model version, and run ID.
         """
-        model_name = self.cfg.mlflow_tracking_cfg.model_name
-        model_stage = self.cfg.mlflow_tracking_cfg.model_stage
+        model_name = self.cfg.mlflow_tracking_cfg['model_name']
+        model_stage = self.cfg.mlflow_tracking_cfg['model_stage']
         
         client = mlflow.MlflowClient()
 
         try:
-            model_metadata = client.get_latest_versions(name=model_name, stages=[model_stage])
-            latest_model_version = model_metadata[0].version
-            model_uri = f"models:/{model_name}/{latest_model_version}"
-            
-            _logger.info(f"Loading latest version of model: {model_name} (Stage: {model_stage}, Version: {latest_model_version})")
-            
-            model = mlflow.pyfunc.load_model(model_uri)
-            _logger.info("Model loaded successfully.")
-            return model, latest_model_version, model_metadata[0].run_id
+        
+            model_uri = f"models:/{model_name}/{model_stage}"
+            _logger.info(f"Loading model from Model Registry: {model_uri}")
+            latest_model = mlflow.pyfunc.load_model(model_uri=model_uri)
+
+            # Retrieve model metadata
+            client = mlflow.MlflowClient()
+            model_version_info = client.get_latest_versions(name=model_name, stages=[model_stage])[0]
+
+            # Extract metadata and store in a dictionary
+            metadata = {
+                "model_name": model_name,
+                "model_version": model_version_info.version,
+                "stage": model_stage,
+                "creation_timestamp": model_version_info.creation_timestamp,
+                "last_updated_timestamp": model_version_info.last_updated_timestamp,
+                "description": model_version_info.description
+            }
+
+
+            return latest_model, metadata
+
         except IndexError:
             _logger.error(f"No model found for name '{model_name}' and stage '{model_stage}'.")
             raise ValueError(f"No model found for name '{model_name}' and stage '{model_stage}'.")
@@ -106,9 +122,9 @@ class ModelInference:
         Returns:
             DataFrame: Spark DataFrame for model inference.
         """
-        inference_query_path = f"queries/{self.cfg.inference_table_cfg.inference_query}"
+        inference_query_path = f"queries/{self.cfg.inference_table_cfg['inference_query']}"
         query = self.read_query(inference_query_path)
-        input_df = spark.sql(query.format(dt_start=self.dt_start, dt_stop=self.dt_stop))
+        input_df = spark.sql(query.format(dt_start=self.cfg.dt_start, dt_stop=self.cfg.dt_stop))
         return input_df
     
     def run_batch(self, df, model):
@@ -124,11 +140,10 @@ class ModelInference:
         """
         input_df = df.toPandas()
         
-        prob = model.predict_proba(input_df)[:, 1]
-        predictions = model.predict(input_df)
+        prob = model.predict(input_df)[:, 1]
 
         input_df["prob"] = prob
-        input_df["prediction"] = (prob > self.cfg.inference_table_cfg.inference_threshold).astype(int)
+        input_df["prediction"] = (prob > self.cfg.inference_table_cfg['inference_threshold']).astype(int)
         
         output_df = spark.createDataFrame(input_df)
         return output_df
@@ -142,19 +157,19 @@ class ModelInference:
             mode (str): Write mode for the output table, default is 'overwrite'.
         """
         _logger.info("==========Running batch model inference==========")
-        model, model_version, run_id = self.load_model()
+        model, metadata = self.load_model()
         df_input = self.load_input_df()
         output_df = self.run_batch(df_input, model)
 
-        # Add model metadata columns
-        output_df = output_df.withColumn("model_version", F.lit(model_version))
-        output_df = output_df.withColumn("run_id", F.lit(run_id))
+        inference_datetime = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        metadata["inference_datetime"] = inference_datetime
 
-        # Add inference timestamp as a string
-        inference_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        output_df = output_df.withColumn("inference_time", F.lit(inference_time))
+        # Add metadata columns to the predictions DataFrame
+        for key, value in metadata.items():
+            output_df = output_df.withColumn(key, lit(value))
         
-        table_name = f"{self.cfg.inference_table_cfg.output_db}.{self.cfg.inference_table_cfg.output_table_name}"
+        table_name = f"{self.cfg.inference_table_cfg['output_db']}.{self.cfg.inference_table_cfg['output_table_name']}"
+        
         if spark.catalog.tableExists(table_name):
             _logger.info("mode=append")
             output_df.write.format("delta").mode('append').saveAsTable(table_name)

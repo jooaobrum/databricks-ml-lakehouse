@@ -1,10 +1,10 @@
 # Databricks notebook source
-# COMMAND ----------
-#MAGIC %pip install scikit-plot
-#MAGIC %pip install feature-engine
-#MAGIC %pip install --upgrade pandas 
-#MAGIC %pip install mlflow
-#MAGIC %pip install imbalanced-learn
+# MAGIC %pip install scikit-plot
+# MAGIC %pip install feature-engine
+# MAGIC %pip install --upgrade pandas 
+# MAGIC %pip install mlflow
+# MAGIC %pip install imbalanced-learn
+
 # COMMAND ----------
 
 
@@ -14,10 +14,6 @@ import logging
 
 # Set up logging
 logger = logging.getLogger()
-
-# Dates for prediction
-dt_start = '2018-01-01'
-dt_stop = '2018-02-01'
 
 
 def main():
@@ -35,9 +31,9 @@ def main():
     # Initialize configuration object
     cfg = ModelInferenceCfg(
     mlflow_tracking_cfg=pipeline_config['mlflow_tracking_cfg'],
-    inference_table_cfg=pipeline_config['inference_table_cfg']
-    dt_start = dt_start,
-    dt_stop = dt_stop
+    inference_table_cfg=pipeline_config['inference_table_cfg'],
+    dt_start = dbutils.widgets.get("dt_start"),
+    dt_stop = dbutils.widgets.get("dt_stop")
     )
 
     logger.info("ModelInferenceCfg initialized successfully.")

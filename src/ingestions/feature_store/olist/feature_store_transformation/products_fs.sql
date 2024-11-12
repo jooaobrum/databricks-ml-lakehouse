@@ -49,7 +49,7 @@ WITH prod_main_category AS (
   ON t1.product_id = t2.product_id
     
   GROUP BY t1.order_id
-  ),
+  )
 
        
 SELECT t1.order_delivered_customer_timestamp as dt_ref,
