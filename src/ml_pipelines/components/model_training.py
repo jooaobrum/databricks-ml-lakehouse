@@ -6,8 +6,6 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from datetime import timedelta
-from lime.lime_tabular import LimeTabularExplainer
-import dill
 # Scikit-learn and imbalanced-learn imports
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.feature_selection import RFE
@@ -221,7 +219,7 @@ class ModelTrain:
         Returns:
             tuple: Splits for training and testing.
         """
-        variables = self.cfg.pipeline_params['numerical_features'] + self.cfg.pipeline_params['categorical_features']
+        variables = ['dt_ref'] + self.cfg.pipeline_params['numerical_features'] + self.cfg.pipeline_params['categorical_features']
         target = self.cfg.labels_table_cfg['target']
         dt_start = self.cfg.training_params['dt_start']
         dt_stop = self.cfg.training_params['dt_stop']
@@ -271,20 +269,13 @@ class ModelTrain:
         mlflow.log_artifact(f'{dataset_name}.parquet.gzip')
         os.remove(f'{dataset_name}.parquet.gzip')
 
-    def save_lime_explainer(self, explainer):
-        with open('explainer.pkl', 'wb') as f:
-            dill.dump(explainer, f)
-        
-    def save_preprocessor(self, preprocessor):
-        with open('preprocessor.pkl', 'wb') as f:
-            dill.dump(preprocessor, f)
 
     def run(self):
         """
         Runs the full model training and logging process.
         """
 
-        variables = self.cfg.pipeline_params['numerical_features'] + self.cfg.pipeline_params['categorical_features']
+        features = self.cfg.pipeline_params['numerical_features'] + self.cfg.pipeline_params['categorical_features']
         target = self.cfg.labels_table_cfg['target']
 
         self._set_experiment(self.cfg.mlflow_tracking_cfg)
@@ -293,40 +284,30 @@ class ModelTrain:
         with mlflow.start_run(run_name=self.cfg.mlflow_tracking_cfg['run_name']) as mlflow_run:
             fs_training_set = self.get_fs_training_set()
             X_train, X_test, y_train, y_test, oot = self.create_train_test_split(fs_training_set)
-            model = self.fit_pipeline(X_train, y_train)
+            model = self.fit_pipeline(X_train[features], y_train)
 
-            self.save_preprocessor(model[:-1])
-            mlflow.log_artifact("preprocessor.pkl")
-            os.remove('preprocessor.pkl')
 
             sklearn_model = ModelWrapper(model)
             mlflow.pyfunc.log_model(
                 artifact_path='fs_model',
                 python_model=sklearn_model,
                 input_example=X_train[:100],
-                signature=infer_signature(X_train, y_train)
+                signature=infer_signature(X_train[features], y_train)
             )
 
             # Model evaluation and logging
             skf = StratifiedKFold(n_splits=5, shuffle=True)
-            metrics = ModelEvaluation.fold_validation(model, skf, X_train, y_train)
+            metrics = ModelEvaluation.fold_validation(model, skf, X_train[features], y_train)
             mlflow.log_metrics(metrics)
 
-            oot_metrics = ModelEvaluation.evaluate_model(model, oot[variables], oot[target], suffix = 'oot')
+            oot_metrics = ModelEvaluation.evaluate_model(model, oot[features], oot[target], suffix = 'oot')
             mlflow.log_metrics(oot_metrics)
 
 
             self.save_dataset_as_artifact(pd.DataFrame(X_train).assign(target=y_train), 'train')
             self.save_dataset_as_artifact(pd.DataFrame(X_test).assign(target=y_test), 'test')
 
-            # Generate LIME
-            X_train_transf = model[-2].transform(X_train)
-            feature_names = [feat.split('__')[1] for feat in model[:-1].get_feature_names_out()]
-            explainer = LimeTabularExplainer(X_train_transf, feature_names=feature_names)
-            self.save_lime_explainer(explainer)  
-            mlflow.log_artifact("explainer.pkl")
-            os.remove('explainer.pkl')
-
+           
             if self.cfg.mlflow_tracking_cfg['model_name']:
                 mlflow.register_model(f'runs:/{mlflow_run.info.run_id}/fs_model', name=self.cfg.mlflow_tracking_cfg['model_name'])
 

@@ -1,0 +1,12 @@
+mlflow_tracking_cfg:
+  model_name: 'olist_bad_reviews'
+  model_stage: 'Staging'
+
+inference_table_cfg:
+  inference_query: 'query_features.sql'
+
+data_drift_cfg:
+  reference_db: bad_reviews_uc
+  table_name: multivariate_data_drift
+
+

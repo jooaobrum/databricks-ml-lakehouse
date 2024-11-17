@@ -1,0 +1,14 @@
+resources:
+  jobs:
+    bad_review_data_drift_pipeline:
+      name: Bad Review Data Drift
+      tasks:
+        - task_key: data_drift
+          notebook_task:
+            notebook_path: /Workspace/Users/joaopaulo_brum@hotmail.com/databricks-ml-lakehouse/src/ml_pipelines/data_drift_pipeline
+            base_parameters:
+              dt_start: 2018-06-01
+              dt_stop: 2018-10-17
+          
+          existing_cluster_id: 1006-130332-ldg0r5wp
+        

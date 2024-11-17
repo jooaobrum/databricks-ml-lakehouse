@@ -4,8 +4,6 @@
 # MAGIC %pip install --upgrade pandas 
 # MAGIC %pip install mlflow
 # MAGIC %pip install imbalanced-learn
-# MAGIC %pip install lime
-# MAGIC %pip install dill
 # MAGIC %pip install fastparquet
 
 # COMMAND ----------
