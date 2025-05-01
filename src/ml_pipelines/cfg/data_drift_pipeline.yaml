@@ -8,5 +8,3 @@ inference_table_cfg:
 data_drift_cfg:
   reference_db: bad_reviews_uc
   table_name: multivariate_data_drift
-
-

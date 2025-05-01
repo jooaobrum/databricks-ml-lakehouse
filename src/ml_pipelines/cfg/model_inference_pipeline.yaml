@@ -7,6 +7,3 @@ inference_table_cfg:
   output_db: bad_reviews_uc
   output_table_name: inference
   inference_threshold: 0.5
-
-
-

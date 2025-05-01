@@ -1,4 +1,4 @@
-SELECT 
+SELECT
        '{dt_ingestion}' as dt_ref,
        t2.seller_id,
        COUNT(DISTINCT t2.order_id) as seller_total_orders,
