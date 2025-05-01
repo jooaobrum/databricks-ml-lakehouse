@@ -1,9 +1,3 @@
-"""
-Generic Databricks Ingestion Module
-
-This module provides a generalized framework for ingesting data from landing zone to bronze layer.
-It accepts parameters from Databricks jobs and handles the ingestion process in a standardized way.
-"""
 import json
 from pyspark.sql.types import StructType
 from pyspark.sql import SparkSession, DataFrame
