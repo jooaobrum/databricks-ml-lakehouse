@@ -1,9 +1,8 @@
-import importlib
-import subprocess
-import sys
 import os
-from pyspark.sql import SparkSession
+import sys
+
 import pytest
+
 
 def setup_environment():
     """
@@ -12,10 +11,10 @@ def setup_environment():
     - Configures the working directory.
     - Disables bytecode caching.
     """
-   
+
     # Get the path to the directory for this file in the workspace.
     dir_root = os.path.dirname(os.path.realpath(__file__))
-    
+
     # Switch to the root directory.
     os.chdir(dir_root)
 

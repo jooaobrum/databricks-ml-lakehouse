@@ -9,6 +9,6 @@ resources:
             base_parameters:
               dt_start: 2018-06-01
               dt_stop: 2018-10-17
-          
+
           existing_cluster_id: 1006-130332-ldg0r5wp
-        
+

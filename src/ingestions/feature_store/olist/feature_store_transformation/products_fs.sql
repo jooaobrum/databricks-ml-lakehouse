@@ -42,16 +42,16 @@ WITH prod_main_category AS (
            AVG(t2.product_description_lenght) as avg_order_prod_description_length,
            AVG(t2.product_photos_qty) as avg_order_photos_qty,
            SUM(t2.product_weight_kg) as total_order_weight
-    
+
 
   FROM olist_silver.olist_order_items as t1
   LEFT JOIN olist_silver.olist_products as t2
   ON t1.product_id = t2.product_id
-    
+
   GROUP BY t1.order_id
   )
 
-       
+
 SELECT t1.order_delivered_customer_timestamp as dt_ref,
        t1.order_id,
        t2.beauty_health,
@@ -69,7 +69,7 @@ SELECT t1.order_delivered_customer_timestamp as dt_ref,
        t3.total_order_weight
 
 
-       
+
 
 FROM olist_silver.olist_orders as t1
 INNER JOIN order_products_category as t2

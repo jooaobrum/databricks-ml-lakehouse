@@ -1,41 +1,46 @@
-# This is a Databricks asset bundle definition for databricks_olist.
-# See https://docs.databricks.com/dev-tools/bundles/index.html for documentation.
 bundle:
-  name: databricks_olist
+  name: databricks-ml-lakehouse
 
 include:
-  - resources/*.yml
+- resources/olist_ingestion_job.yml
+
+artifacts:
+  default:
+    type: whl
+    build: uv build
+    path: .
+
+
+variables:
+  git-sha:
+    description: git-sha
+    default: abcd
+  branch:
+    description: branch
+    default: main
+  schedule_pause_status:
+    description: schedule pause status
+    default: UNPAUSED
 
 targets:
-  # The 'dev' target, for development purposes. This target is the default.
   dev:
-    # We use 'mode: development' to indicate this is a personal development copy:
-    # - Deployed resources get prefixed with '[dev my_user_name]'
-    # - Any job schedules and triggers are paused by default
-    # - The 'development' mode is used for Delta Live Tables pipelines
-    mode: development
+    cluster_id: 0201-105915-sb4m34sp
     default: true
+    mode: development
     workspace:
-      host: https://adb-2960525465975810.10.azuredatabricks.net
-
-  ## Optionally, there could be a 'staging' target here.
-  ## (See Databricks docs on CI/CD at https://docs.databricks.com/dev-tools/bundles/index.html.)
-  #
-  # staging:
-  #   workspace:
-  #     host: https://adb-2960525465975810.10.azuredatabricks.net
-
-  # The 'prod' target, used for production deployment.
+      host: https://adb-2625093468221227.7.azuredatabricks.net
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
+  qa:
+    cluster_id: 0201-105915-sb4m34sp
+    default: false
+    mode: test
+    workspace:
+      host: https://adb-2625093468221227.7.azuredatabricks.net
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
   prod:
-    # We use 'mode: production' to indicate this is a production deployment.
-    # Doing so enables strict verification of the settings below.
+    cluster_id: 0201-105915-sb4m34sp
+    default: false
     mode: production
     workspace:
-      host: https://adb-2960525465975810.10.azuredatabricks.net
-      # We always use /Users/joaopaulo_brum@hotmail.com for all resources to make sure we only have a single copy.
-      # If this path results in an error, please make sure you have a recent version of the CLI installed.
-      root_path: /Users/joaopaulo_brum@hotmail.com/.bundle/${bundle.name}/${bundle.target}
-    run_as:
-      # This runs as joaopaulo_brum@hotmail.com in production. We could also use a service principal here,
-      # see https://docs.databricks.com/dev-tools/bundles/permissions.html.
-      user_name: joaopaulo_brum@hotmail.com
+      host: https://adb-2625093468221227.7.azuredatabricks.net
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}

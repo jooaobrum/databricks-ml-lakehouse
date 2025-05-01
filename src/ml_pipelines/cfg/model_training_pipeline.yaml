@@ -24,9 +24,9 @@ pipeline_params:
                     'product_avg_review_score', 'arts_entertainment', 'order_items_price',
                     'baby_kids', 'order_n_items', 'seller_avg_review_score',
                     'order_freight_price', 'beauty_health']
-    
+
     categorical_features: ['order_delivery_status']
-    
+
 
 
 model_params:

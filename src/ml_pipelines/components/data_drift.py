@@ -1,48 +1,53 @@
-import sys
-from databricks.sdk.runtime import *
-from .logger import get_logger
-import mlflow
-import pandas as pd
-from dataclasses import dataclass
-from datetime import datetime
-from pyspark.sql import functions as F
-from pyspark.sql.functions import lit
 import os
 import re
-import nannyml as nml
+from dataclasses import dataclass
 
+import mlflow
+import nannyml as nml
+import pandas as pd
+from databricks.sdk.runtime import *
+
+from .logger import get_logger
 
 # Initialize logger
 _logger = get_logger()
+
 
 @dataclass
 class MlflowTrackingCfg:
     """
     Configuration for MLflow tracking.
     """
+
     model_name: str
     model_stage: str
+
 
 @dataclass
 class DataDriftCfg:
     """
     Configuration for MLflow tracking.
     """
+
     reference_db: str
     table_name: str
+
 
 @dataclass
 class InferenceTableCfg:
     """
     Configuration for Feature Store table.
     """
+
     query_features: str
+
 
 @dataclass
 class DataDriftConfig:
     """
     Configuration class to hold parameters for model training.
     """
+
     mlflow_tracking_cfg: MlflowTrackingCfg
     inference_table_cfg: InferenceTableCfg
     data_drift_cfg: DataDriftCfg
@@ -50,11 +55,9 @@ class DataDriftConfig:
     dt_stop: str
 
 
-
 class DataDrift:
     def __init__(self, cfg: DataDriftConfig):
         self.cfg = cfg
-  
 
     def read_query(self, path: str) -> str:
         """
@@ -68,7 +71,7 @@ class DataDrift:
         """
         _logger.info(f"Reading base query from {path}")
         try:
-            with open(path, 'r') as f:
+            with open(path, "r") as f:
                 query = f.read()
             _logger.info("Successfully read base query.")
             return query
@@ -77,30 +80,32 @@ class DataDrift:
             raise
 
     def load_input_df(self):
-      """
-      Loads input data for inference by executing a SQL query with date filters.
+        """
+        Loads input data for inference by executing a SQL query with date filters.
 
-      Returns:
-          DataFrame: Spark DataFrame for model inference.
-      """
-      data_drift_query_path = f"queries/{self.cfg.inference_table_cfg['inference_query']}"
-      query = self.read_query(data_drift_query_path)
-      input_df = spark.sql(query.format(dt_start=self.cfg.dt_start, dt_stop=self.cfg.dt_stop))
-      return input_df.toPandas()
-    
+        Returns:
+            DataFrame: Spark DataFrame for model inference.
+        """
+        data_drift_query_path = f"queries/{self.cfg.inference_table_cfg['inference_query']}"
+        query = self.read_query(data_drift_query_path)
+        input_df = spark.sql(query.format(dt_start=self.cfg.dt_start, dt_stop=self.cfg.dt_stop))
+        return input_df.toPandas()
+
     def load_reference_df(self):
-      # Retrieve model metadata
-      client = mlflow.MlflowClient()
-      model_version_info = client.get_latest_versions(name=self.cfg.mlflow_tracking_cfg['model_name'], stages=[self.cfg.mlflow_tracking_cfg['model_stage']])[0]
+        # Retrieve model metadata
+        client = mlflow.MlflowClient()
+        model_version_info = client.get_latest_versions(
+            name=self.cfg.mlflow_tracking_cfg["model_name"], stages=[self.cfg.mlflow_tracking_cfg["model_stage"]]
+        )[0]
 
-      local_path = client.download_artifacts(model_version_info.run_id, "test.parquet.gzip", '.')
+        local_path = client.download_artifacts(model_version_info.run_id, "test.parquet.gzip", ".")
 
-      reference_df = pd.read_parquet(local_path)
+        reference_df = pd.read_parquet(local_path)
 
-      os.remove(local_path)
+        os.remove(local_path)
 
-      return reference_df
-    
+        return reference_df
+
     def calculate_multivariate_drift(self, input_df: pd.DataFrame, reference_df: pd.DataFrame):
         """
         Calculate multivariate drift using the nannyML library.
@@ -113,15 +118,12 @@ class DataDrift:
             pd.DataFrame: Multivariate drift results.
         """
         # Identify feature columns
-        non_feature_columns = ['dt_ref', 'target']
+        non_feature_columns = ["dt_ref", "target"]
         feature_column_names = [col for col in reference_df.columns if col not in non_feature_columns]
 
         # Initialize the Data Reconstruction Drift Calculator
         calc = nml.DataReconstructionDriftCalculator(
-            column_names=feature_column_names,
-            timestamp_column_name='dt_ref',
-
-            chunk_size=100
+            column_names=feature_column_names, timestamp_column_name="dt_ref", chunk_size=100
         )
 
         # Fit the calculator on the reference data
@@ -135,7 +137,7 @@ class DataDrift:
         figure.show()
 
         return results.to_df()
-      
+
     def clean_and_save_dataframe(self, df):
         """
         Cleans DataFrame column names by removing special characters and spaces,
@@ -148,13 +150,13 @@ class DataDrift:
             database_name (str): The name of the database where the table resides.
                                 Defaults to 'default'.
         """
-        database_name = self.cfg.data_drift_cfg['reference_db']
-        table_name = self.cfg.data_drift_cfg['table_name']
+        database_name = self.cfg.data_drift_cfg["reference_db"]
+        table_name = self.cfg.data_drift_cfg["table_name"]
 
         # Function to clean column names
         def clean_column_name(col_name):
             # Remove special characters and replace spaces with underscores
-            cleaned_name = re.sub(r'[^0-9a-zA-Z_]', '', col_name.replace(' ', '_'))
+            cleaned_name = re.sub(r"[^0-9a-zA-Z_]", "", col_name.replace(" ", "_"))
             return cleaned_name
 
         # Clean column names
@@ -169,17 +171,14 @@ class DataDrift:
         # Check if the table exists
         if spark.catalog.tableExists(database_name, table_name):
             # Append to existing table
-            df_cleaned_spark.write.mode('append').saveAsTable(full_table_name)
+            df_cleaned_spark.write.mode("append").saveAsTable(full_table_name)
             print(f"Data appended to existing table: {full_table_name}")
         else:
             # Create new table
-            df_cleaned_spark.write.mode('overwrite').saveAsTable(full_table_name)
+            df_cleaned_spark.write.mode("overwrite").saveAsTable(full_table_name)
             print(f"New table created: {full_table_name}")
 
-      
     def run(self):
-
-    
         # Load reference and input data
         reference_df = self.load_reference_df()
         input_df = self.load_input_df()
@@ -193,5 +192,3 @@ class DataDrift:
 
         # Clean and save the drift metrics DataFrame
         self.clean_and_save_dataframe(drift_df)
-
-        

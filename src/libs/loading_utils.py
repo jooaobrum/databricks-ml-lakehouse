@@ -1,9 +1,10 @@
 import os
 import pathlib
+import pprint
+from typing import Any, Dict
+
 import dotenv
 import yaml
-import pprint
-from typing import Dict, Any
 
 
 def load_and_set_env_vars(env: str) -> Dict[str, Any]:
@@ -20,9 +21,8 @@ def load_and_set_env_vars(env: str) -> Dict[str, Any]:
     -------
     Dictionary of set environment variables
     """
-    env_vars_path = os.path.join('envs', env, f'.{env}.env')
+    env_vars_path = os.path.join("envs", env, f".{env}.env")
     dotenv.load_dotenv(env_vars_path)
-
 
     os_dict = dict(os.environ)
     pprint.pprint(os_dict)
@@ -44,7 +44,7 @@ def load_config(pipeline_name) -> Dict[str, Any]:
     -------
     Dictionary of config params
     """
-    config_path = os.path.join('cfg', f'{pipeline_name}.yml')
+    config_path = os.path.join("cfg", f"{pipeline_name}.yml")
     pipeline_config = yaml.safe_load(pathlib.Path(config_path).read_text())
     pprint.pprint(pipeline_config)
 

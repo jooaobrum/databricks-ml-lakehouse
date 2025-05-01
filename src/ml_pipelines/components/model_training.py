@@ -1,34 +1,21 @@
-from dataclasses import dataclass
-import sys
 import os
-import pandas as pd
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
+from dataclasses import dataclass
 from datetime import timedelta
-# Scikit-learn and imbalanced-learn imports
-from sklearn.model_selection import StratifiedKFold, train_test_split
-from sklearn.feature_selection import RFE
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.metrics import (accuracy_score, precision_score, recall_score, 
-                             f1_score, roc_auc_score, average_precision_score, 
-                             confusion_matrix, classification_report)
-from sklearn.utils.class_weight import compute_class_weight
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.pipeline import Pipeline as ImbPipeline
-from sklearn.dummy import DummyClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
 
 # MLflow and Databricks SDK imports
 import mlflow
-from mlflow.pyfunc import PythonModel
-from mlflow.models import infer_signature
+import pandas as pd
 from databricks.sdk.runtime import *
+from mlflow.models import infer_signature
+from mlflow.pyfunc import PythonModel
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
+
+# Scikit-learn and imbalanced-learn imports
+from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 # Custom imports for evaluation and logging
 from .logger import get_logger
@@ -37,41 +24,50 @@ from .model_evaluation import ModelEvaluation
 # Initialize the logger
 _logger = get_logger()
 
+
 @dataclass
 class MlflowTrackingCfg:
     """
     Configuration for MLflow tracking.
     """
+
     run_name: str
     model_train_experiment_path: str
     model_name: str
+
 
 @dataclass
 class FeatureStoreTableCfg:
     """
     Configuration for Feature Store table.
     """
+
     query_features: str
+
 
 @dataclass
 class LabelTableCfg:
     """
     Configuration for Label Table.
     """
+
     query_target: str
     target: str
+
 
 @dataclass
 class ModelTrainConfig:
     """
     Configuration class to hold parameters for model training.
     """
+
     mlflow_tracking_cfg: MlflowTrackingCfg
     feature_store_table_cfg: FeatureStoreTableCfg
     labels_table_cfg: LabelTableCfg
     pipeline_params: dict
     model_params: dict
     training_params: dict
+
 
 class ModelTrainPipeline:
     @classmethod
@@ -85,23 +81,16 @@ class ModelTrainPipeline:
         Returns:
             ColumnTransformer: A preprocessing pipeline.
         """
-        numerical_features = pipeline_params['numerical_features']
-        categorical_features = pipeline_params['categorical_features']
+        numerical_features = pipeline_params["numerical_features"]
+        categorical_features = pipeline_params["categorical_features"]
 
         # Numerical transformations
         numeric_transformer = Pipeline(
-            steps=[
-                ("imputer", SimpleImputer(strategy="constant", fill_value=0)),
-                ("scaler", StandardScaler())
-            ]
+            steps=[("imputer", SimpleImputer(strategy="constant", fill_value=0)), ("scaler", StandardScaler())]
         )
 
         # Categorical transformations
-        categorical_transformer = Pipeline(
-            steps=[
-                ("encoder", OneHotEncoder(handle_unknown='ignore'))
-            ]
-        )
+        categorical_transformer = Pipeline(steps=[("encoder", OneHotEncoder(handle_unknown="ignore"))])
 
         # Preprocessing pipeline
         preprocessor = ColumnTransformer(
@@ -109,7 +98,7 @@ class ModelTrainPipeline:
                 ("num", numeric_transformer, numerical_features),
                 ("cat", categorical_transformer, categorical_features),
             ],
-            remainder='passthrough'
+            remainder="passthrough",
         )
 
         return preprocessor
@@ -130,16 +119,18 @@ class ModelTrainPipeline:
         model = LogisticRegression(**model_params)
 
         # Pipeline
-        pipeline = Pipeline(steps=[('preprocessor', preprocessor), ('classifier', model)])
+        pipeline = Pipeline(steps=[("preprocessor", preprocessor), ("classifier", model)])
 
         return pipeline
 
+
 class ModelWrapper(PythonModel):
-    def __init__(self, trained_model): 
+    def __init__(self, trained_model):
         self.model = trained_model
 
     def predict(self, context, model_input):
         return self.model.predict_proba(model_input)
+
 
 class ModelTrain:
     def __init__(self, cfg: ModelTrainConfig):
@@ -163,7 +154,7 @@ class ModelTrain:
         """
         _logger.info(f"Reading base query from {path}")
         try:
-            with open(path, 'r') as f:
+            with open(path, "r") as f:
                 query = f.read()
             _logger.info("Successfully read base query.")
             return query
@@ -185,7 +176,6 @@ class ModelTrain:
         else:
             raise RuntimeError("MLflow experiment_path must be set in mlflow_params")
 
-
     def get_fs_training_set(self):
         """
         Creates a training set by joining features and labels from queries.
@@ -195,18 +185,15 @@ class ModelTrain:
         """
         target_query_path = f"queries/{self.cfg.labels_table_cfg['query_target']}"
         features_query_path = f"queries/{self.cfg.feature_store_table_cfg['query_features']}"
-        dt_start = self.cfg.training_params['dt_start']
-        dt_stop = self.cfg.training_params['dt_stop']
+        dt_start = self.cfg.training_params["dt_start"]
+        dt_stop = self.cfg.training_params["dt_stop"]
 
         target_query = self.read_query(target_query_path)
-        labels_df = spark.sql(target_query.format(dt_start = dt_start,
-                                                  dt_stop = dt_stop))
+        labels_df = spark.sql(target_query.format(dt_start=dt_start, dt_stop=dt_stop))
         features_query = self.read_query(features_query_path)
-        features_df = spark.sql(features_query.format(dt_start = dt_start,
-                                                      dt_stop = dt_stop))
+        features_df = spark.sql(features_query.format(dt_start=dt_start, dt_stop=dt_stop))
 
-
-        fs_training_set = features_df.join(labels_df, 'order_id', 'inner')
+        fs_training_set = features_df.join(labels_df, "order_id", "inner")
         return fs_training_set
 
     def create_train_test_split(self, fs_training_set):
@@ -219,28 +206,38 @@ class ModelTrain:
         Returns:
             tuple: Splits for training and testing.
         """
-        variables = ['dt_ref'] + self.cfg.pipeline_params['numerical_features'] + self.cfg.pipeline_params['categorical_features']
-        target = self.cfg.labels_table_cfg['target']
-        dt_start = self.cfg.training_params['dt_start']
-        dt_stop = self.cfg.training_params['dt_stop']
-        
+        variables = (
+            ["dt_ref"]
+            + self.cfg.pipeline_params["numerical_features"]
+            + self.cfg.pipeline_params["categorical_features"]
+        )
+        target = self.cfg.labels_table_cfg["target"]
+        dt_start = self.cfg.training_params["dt_start"]
+        dt_stop = self.cfg.training_params["dt_stop"]
 
         train = fs_training_set.toPandas()
-        train['dt_ref'] = pd.to_datetime(train['dt_ref'])
-        
-        oot = train[(train['dt_ref'] >= pd.to_datetime(dt_stop) - timedelta(days=30)) & (train['dt_ref'] < pd.to_datetime(dt_stop))]
-        train = train[(train['dt_ref'] >= pd.to_datetime(dt_start)) & (train['dt_ref'] < (pd.to_datetime(dt_stop) - timedelta(days=30)))]
-        
+        train["dt_ref"] = pd.to_datetime(train["dt_ref"])
+
+        oot = train[
+            (train["dt_ref"] >= pd.to_datetime(dt_stop) - timedelta(days=30))
+            & (train["dt_ref"] < pd.to_datetime(dt_stop))
+        ]
+        train = train[
+            (train["dt_ref"] >= pd.to_datetime(dt_start))
+            & (train["dt_ref"] < (pd.to_datetime(dt_stop) - timedelta(days=30)))
+        ]
+
         X = train[variables]
         y = train[target]
 
         X_train, X_test, y_train, y_test = train_test_split(
-            X, y,
-            test_size=self.cfg.pipeline_params['test_size'],
-            random_state=self.cfg.pipeline_params['random_state'],
-            stratify=y
+            X,
+            y,
+            test_size=self.cfg.pipeline_params["test_size"],
+            random_state=self.cfg.pipeline_params["random_state"],
+            stratify=y,
         )
-        
+
         return X_train, X_test, y_train, y_test, oot
 
     def fit_pipeline(self, X_train, y_train):
@@ -265,34 +262,32 @@ class ModelTrain:
             dataset (DataFrame): The dataset to save.
             dataset_name (str): Name of the dataset.
         """
-        dataset.to_parquet(f'{dataset_name}.parquet.gzip', compression='gzip')
-        mlflow.log_artifact(f'{dataset_name}.parquet.gzip')
-        os.remove(f'{dataset_name}.parquet.gzip')
-
+        dataset.to_parquet(f"{dataset_name}.parquet.gzip", compression="gzip")
+        mlflow.log_artifact(f"{dataset_name}.parquet.gzip")
+        os.remove(f"{dataset_name}.parquet.gzip")
 
     def run(self):
         """
         Runs the full model training and logging process.
         """
 
-        features = self.cfg.pipeline_params['numerical_features'] + self.cfg.pipeline_params['categorical_features']
-        target = self.cfg.labels_table_cfg['target']
+        features = self.cfg.pipeline_params["numerical_features"] + self.cfg.pipeline_params["categorical_features"]
+        target = self.cfg.labels_table_cfg["target"]
 
         self._set_experiment(self.cfg.mlflow_tracking_cfg)
         mlflow.sklearn.autolog(log_input_examples=True, silent=True)
 
-        with mlflow.start_run(run_name=self.cfg.mlflow_tracking_cfg['run_name']) as mlflow_run:
+        with mlflow.start_run(run_name=self.cfg.mlflow_tracking_cfg["run_name"]) as mlflow_run:
             fs_training_set = self.get_fs_training_set()
             X_train, X_test, y_train, y_test, oot = self.create_train_test_split(fs_training_set)
             model = self.fit_pipeline(X_train[features], y_train)
 
-
             sklearn_model = ModelWrapper(model)
             mlflow.pyfunc.log_model(
-                artifact_path='fs_model',
+                artifact_path="fs_model",
                 python_model=sklearn_model,
                 input_example=X_train[:100],
-                signature=infer_signature(X_train[features], y_train)
+                signature=infer_signature(X_train[features], y_train),
             )
 
             # Model evaluation and logging
@@ -300,15 +295,15 @@ class ModelTrain:
             metrics = ModelEvaluation.fold_validation(model, skf, X_train[features], y_train)
             mlflow.log_metrics(metrics)
 
-            oot_metrics = ModelEvaluation.evaluate_model(model, oot[features], oot[target], suffix = 'oot')
+            oot_metrics = ModelEvaluation.evaluate_model(model, oot[features], oot[target], suffix="oot")
             mlflow.log_metrics(oot_metrics)
 
+            self.save_dataset_as_artifact(pd.DataFrame(X_train).assign(target=y_train), "train")
+            self.save_dataset_as_artifact(pd.DataFrame(X_test).assign(target=y_test), "test")
 
-            self.save_dataset_as_artifact(pd.DataFrame(X_train).assign(target=y_train), 'train')
-            self.save_dataset_as_artifact(pd.DataFrame(X_test).assign(target=y_test), 'test')
+            if self.cfg.mlflow_tracking_cfg["model_name"]:
+                mlflow.register_model(
+                    f"runs:/{mlflow_run.info.run_id}/fs_model", name=self.cfg.mlflow_tracking_cfg["model_name"]
+                )
 
-           
-            if self.cfg.mlflow_tracking_cfg['model_name']:
-                mlflow.register_model(f'runs:/{mlflow_run.info.run_id}/fs_model', name=self.cfg.mlflow_tracking_cfg['model_name'])
-
-        _logger.info('Model training completed.')
+        _logger.info("Model training completed.")

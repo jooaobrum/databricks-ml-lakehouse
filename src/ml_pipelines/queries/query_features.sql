@@ -5,8 +5,8 @@ with table_order as (
         AVG(t3.prod_average_review_score) as product_avg_review_score,
         AVG(t4.seller_total_orders) as seller_total_orders,
         AVG(t4.seller_average_review_score) as seller_avg_review_score
-      
-        
+
+
 
   FROM olist_silver.olist_orders as t1
   LEFT JOIN olist_silver.olist_order_items as t2

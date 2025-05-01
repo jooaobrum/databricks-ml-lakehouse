@@ -1,4 +1,4 @@
-SELECT 
+SELECT
        '{dt_ingestion}' as dt_ref,
        t2.product_id,
        AVG(t3.review_score) as prod_average_review_score

@@ -1,5 +1,5 @@
 with orders_delivery as (
-        SELECT  DISTINCT 
+        SELECT  DISTINCT
                 t1.order_id,
                 DATEDIFF(t1.order_delivered_customer_timestamp, t1.order_estimated_delivery_timestamp) as days_to_estimation,
                 CASE WHEN DATEDIFF(t1.order_delivered_customer_timestamp, t1.order_estimated_delivery_timestamp) > 0 THEN 'delivered_late' ELSE 'delivered_on_time' END as delivery_status,
