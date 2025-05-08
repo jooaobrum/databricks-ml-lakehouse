@@ -30,8 +30,8 @@ def parse_arguments():
 def setup_configuration(args):
     """Set up configuration based on arguments."""
     # Parse task key
-    ref_name = args.task_key.split('__')[0]
-    lz_table_name = args.task_key.split('__')[1]
+    ref_name = args.task_key.split('__')[1]
+    lz_table_name = args.task_key.split('__')[2]
     
     # Define reading options based on file format
     read_opt = get_read_options(args.file_format, args)
@@ -155,7 +155,7 @@ def add_metadata_columns(spark: SparkSession, df: DataFrame, task_key: str) -> D
     df.createOrReplaceTempView(view_name)
     
     # Get ingestor file name
-    ingestor_file = 'full_bronze_ingestion'
+    ingestor_file = 'bronze_ingestion'
     
     # Add metadata columns
     query = f"""
