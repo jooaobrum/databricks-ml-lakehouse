@@ -8,9 +8,6 @@ SELECT  product_id,
         product_length_cm,
         product_height_cm,
         product_width_cm,
-        product_length_cm*product_height_cm*product_width_cm as product_vol_cm3,
-        '{task_key}_silver_ingestion' as table_task_key,
-        DATE_FORMAT(current_timestamp(), 'yyyy-MM-dd') as dt_ingestion
+        product_length_cm*product_height_cm*product_width_cm as product_vol_cm3
 
-
-FROM {view_tmp}
+FROM bronze_{task_key}
