@@ -2,7 +2,7 @@ bundle:
   name: databricks-ml-lakehouse
 
 include:
-- resources/data-lake_jobs/*.yml
+- resources/data-lake-jobs/*.yml
 
 artifacts:
   default:
