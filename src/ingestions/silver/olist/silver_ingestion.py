@@ -24,9 +24,9 @@ def parse_arguments():
 def setup_configuration(args):
     """Set up configuration based on arguments."""
     # Parse task key
-    ref_name = args.task_key.split('__')[0]
-    bronze_table_name = args.task_key.split('__')[1]
-    silver_table_name = args.task_key.split('__')[1]
+    ref_name = args.task_key.split('__')[1]
+    bronze_table_name = args.task_key.split('__')[2]
+    silver_table_name = args.task_key.split('__')[2]
     partition_columns = args.partitions.split(',')
     
     # Create configuration dictionary
@@ -38,7 +38,7 @@ def setup_configuration(args):
         'silver_catalog_name': f'uc_{args.env}',
         'silver_schema_name': f'{ref_name}_silver',
         'silver_table_name': silver_table_name,
-        'transformation_query_path': f"{args.root_path}/silver_transformation/{silver_table_name}.sql",
+        'transformation_query_path': f"silver_transformation/{silver_table_name}.sql",
         'partition_columns': partition_columns
     }
     
@@ -104,7 +104,7 @@ def add_metadata_columns(spark: SparkSession, df: DataFrame, task_key: str) -> D
     df.createOrReplaceTempView(view_name)
     
     # Get ingestor file name
-    ingestor_file = 'full_silver_ingestion'
+    ingestor_file = 'silver_ingestion'
     
     # Add metadata columns
     query = f"""

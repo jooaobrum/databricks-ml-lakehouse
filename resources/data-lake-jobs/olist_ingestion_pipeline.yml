@@ -1,11 +1,11 @@
 resources:
   jobs:
     olist_ingestion_pipeline:
-      name: Olist Ingestion Pipeline
+      name: olist_ingestion_pipeline
       max_concurrent_runs: 3
       tasks:
         # BRONZE TASKS
-        - task_key: bronze_olist_customers
+        - task_key: bronze__olist__olist_customers
           existing_cluster_id: 0201-105915-sb4m34sp
           spark_python_task:
             python_file: "../../src/ingestions/bronze/olist/bronze_ingestion.py"
@@ -27,7 +27,7 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: bronze_olist_geolocation
+        - task_key: bronze__olist__olist_geolocation
           existing_cluster_id: 0201-105915-sb4m34sp
           spark_python_task:
             python_file: "../../src/ingestions/bronze/olist/bronze_ingestion.py"
@@ -49,7 +49,7 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: bronze_olist_order_items
+        - task_key: bronze__olist__olist_order_items
           existing_cluster_id: 0201-105915-sb4m34sp
           spark_python_task:
             python_file: "../../src/ingestions/bronze/olist/bronze_ingestion.py"
@@ -71,7 +71,7 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: bronze_olist_order_payments
+        - task_key: bronze__olist__olist_order_payments
           existing_cluster_id: 0201-105915-sb4m34sp
           spark_python_task:
             python_file: "../../src/ingestions/bronze/olist/bronze_ingestion.py"
@@ -93,7 +93,7 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: bronze_olist_order_reviews
+        - task_key: bronze__olist__olist_order_reviews
           existing_cluster_id: 0201-105915-sb4m34sp
           spark_python_task:
             python_file: "../../src/ingestions/bronze/olist/bronze_ingestion.py"
@@ -115,7 +115,7 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: bronze_olist_orders
+        - task_key: bronze__olist__olist_orders
           existing_cluster_id: 0201-105915-sb4m34sp
           spark_python_task:
             python_file: "../../src/ingestions/bronze/olist/bronze_ingestion.py"
@@ -137,7 +137,7 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: bronze_olist_products
+        - task_key: bronze__olist__olist_products
           existing_cluster_id: 0201-105915-sb4m34sp
           spark_python_task:
             python_file: "../../src/ingestions/bronze/olist/bronze_ingestion.py"
@@ -159,7 +159,7 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: bronze_olist_sellers
+        - task_key: bronze__olist__olist_sellers
           existing_cluster_id: 0201-105915-sb4m34sp
           spark_python_task:
             python_file: "../../src/ingestions/bronze/olist/bronze_ingestion.py"
@@ -182,10 +182,10 @@ resources:
             - whl: ../../dist/*.whl
 
         # SILVER TASKS WITH DEPENDENCIES
-        - task_key: silver_olist_customers
+        - task_key: silver__olist__olist_customers
           existing_cluster_id: 0201-105915-sb4m34sp
           depends_on:
-            - task_key: bronze_olist_customers
+            - task_key: bronze__olist__olist_customers
           spark_python_task:
             python_file: "../../src/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -200,10 +200,10 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: silver_olist_geolocation
+        - task_key: silver__olist__olist_geolocation
           existing_cluster_id: 0201-105915-sb4m34sp
           depends_on:
-            - task_key: bronze_olist_geolocation
+            - task_key: bronze__olist__olist_geolocation
           spark_python_task:
             python_file: "../../src/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -218,34 +218,10 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: silver_olist_order_items
+        - task_key: silver__olist__olist_order_items
           existing_cluster_id: 0201-105915-sb4m34sp
           depends_on:
-            - task_key: bronze_olist_order_items
-          spark_python_task:
-            python_file: "../../src/ingestions/silver/olist/silver_ingestion.py"
-            parameters:
-              - "--root_path"
-              - "${workspace.root_path}"
-              - "--env"
-              - "${bundle.target}"
-              - "--file_format"
-              - "csv"
-              - "--delimiter"
-              - ","
-              - "--header"
-              - "true"
-              - "--partitions"
-              - "dt_ingestion"
-              - "--task_key"
-              - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
-
-        - task_key: silver_olist_order_payments
-          existing_cluster_id: 0201-105915-sb4m34sp
-          depends_on:
-            - task_key: bronze_olist_order_payments
+            - task_key: bronze__olist__olist_order_items
           spark_python_task:
             python_file: "../../src/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -260,10 +236,10 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: silver_olist_order_reviews
+        - task_key: silver__olist__olist_order_payments
           existing_cluster_id: 0201-105915-sb4m34sp
           depends_on:
-            - task_key: bronze_olist_order_reviews
+            - task_key: bronze__olist__olist_order_payments
           spark_python_task:
             python_file: "../../src/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -278,34 +254,10 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: silver_olist_orders
+        - task_key: silver__olist__olist_order_reviews
           existing_cluster_id: 0201-105915-sb4m34sp
           depends_on:
-            - task_key: bronze_olist_orders
-          spark_python_task:
-            python_file: "../../src/ingestions/silver/olist/silver_ingestion.py"
-            parameters:
-              - "--root_path"
-              - "${workspace.root_path}"
-              - "--env"
-              - "${bundle.target}"
-              - "--file_format"
-              - "csv"
-              - "--delimiter"
-              - ","
-              - "--header"
-              - "true"
-              - "--partitions"
-              - "dt_ingestion"
-              - "--task_key"
-              - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
-
-        - task_key: silver_olist_products
-          existing_cluster_id: 0201-105915-sb4m34sp
-          depends_on:
-            - task_key: bronze_olist_products
+            - task_key: bronze__olist__olist_order_reviews
           spark_python_task:
             python_file: "../../src/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -320,10 +272,46 @@ resources:
           libraries:
             - whl: ../../dist/*.whl
 
-        - task_key: silver_olist_sellers
+        - task_key: silver__olist__olist_orders
           existing_cluster_id: 0201-105915-sb4m34sp
           depends_on:
-            - task_key: bronze_olist_sellers
+            - task_key: bronze__olist__olist_orders
+          spark_python_task:
+            python_file: "../../src/ingestions/silver/olist/silver_ingestion.py"
+            parameters:
+              - "--root_path"
+              - "${workspace.root_path}"
+              - "--env"
+              - "${bundle.target}"
+              - "--partitions"
+              - "dt_ingestion"
+              - "--task_key"
+              - "{{task.name}}"
+          libraries:
+            - whl: ../../dist/*.whl
+
+        - task_key: silver__olist__olist_products
+          existing_cluster_id: 0201-105915-sb4m34sp
+          depends_on:
+            - task_key: bronze__olist__olist_products
+          spark_python_task:
+            python_file: "../../src/ingestions/silver/olist/silver_ingestion.py"
+            parameters:
+              - "--root_path"
+              - "${workspace.root_path}"
+              - "--env"
+              - "${bundle.target}"
+              - "--partitions"
+              - "dt_ingestion"
+              - "--task_key"
+              - "{{task.name}}"
+          libraries:
+            - whl: ../../dist/*.whl
+
+        - task_key: silver__olist__olist_sellers
+          existing_cluster_id: 0201-105915-sb4m34sp
+          depends_on:
+            - task_key: bronze__olist__olist_sellers
           spark_python_task:
             python_file: "../../src/ingestions/silver/olist/silver_ingestion.py"
             parameters:
