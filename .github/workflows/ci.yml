@@ -6,6 +6,7 @@ on:
       - main
   pull_request:
     branches:
+      - qa
       - main
 
 jobs:
@@ -34,3 +35,7 @@ jobs:
       - name: Run pre-commit checks
         run: |
           uv run pre-commit run --all-files
+
+      - name: Run pytest
+        run: |
+          uv run python tests/run_tests.py

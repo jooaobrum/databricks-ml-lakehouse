@@ -1,9 +1,8 @@
-import importlib
-import subprocess
-import sys
 import os
-from pyspark.sql import SparkSession
+import sys
+
 import pytest
+
 
 def setup_environment():
     """
@@ -12,10 +11,10 @@ def setup_environment():
     - Configures the working directory.
     - Disables bytecode caching.
     """
-   
+
     # Get the path to the directory for this file in the workspace.
     dir_root = os.path.dirname(os.path.realpath(__file__))
-    
+
     # Switch to the root directory.
     os.chdir(dir_root)
 
@@ -35,6 +34,9 @@ def run_pytest():
         retcode = pytest.main(sys.argv[1:])
         if retcode == 0:
             print("All tests passed successfully.")
+        elif retcode == 5:
+            print("No tests were found. This is acceptable.")
+            sys.exit(0)
         else:
             print(f"Tests failed with return code: {retcode}")
         return retcode

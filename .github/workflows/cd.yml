@@ -1,0 +1,40 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+env:
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+jobs:
+  setup-validate:
+    name: Set Up Environment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ env.GIT_BRANCH }}
+
+      - name: Set Up Python
+        uses: actions/setup-python@b64ffcaf5b410884ad320a9cfac8866006a109aa
+        with:
+          python-version: 3.11
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@2e657c127d5b1635d5a8e3fa40e0ac50a5bf6992
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@948d7379a31615a4c8e9ccbbc5445a12d6b32736
+        with:
+          version: 0.232.1
+
+      - name: Deploy to Databricks
+        env:
+          DATABRICKS_BUNDLE_ENV: prod # bundle target
+        run: databricks bundle deploy --target "$DATABRICKS_BUNDLE_ENV" --var="git_sha=${{ github.sha }}"

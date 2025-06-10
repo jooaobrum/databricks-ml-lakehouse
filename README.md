@@ -25,7 +25,7 @@ This repository is a continuous work in progress, aimed at providing comprehensi
 
 
 
-### Data Lake Architecture 
+### Data Lake Architecture
 
 ![Data Lake Schema](https://github.com/jooaobrum/databricks-ml-lakehouse/blob/main/img/data-lake-schema.png)
 
@@ -37,13 +37,13 @@ This repository is a continuous work in progress, aimed at providing comprehensi
 ### How to Create the Ingestion in Bronze and Silver
 
 #### Bronze
-1. **Upload File to Landing Zone:** 
+1. **Upload File to Landing Zone:**
    - Place the new file in the landing zone directory (`/mnt/landing_zone/olist/`). Ensure that the file is in CSV format and contains data relevant to your Olist dataset.
 
-2. **Create the Schema:** 
+2. **Create the Schema:**
    - Create the schema in `ingestion/bronze/olist/schemas` containing the types and columns of the raw file.
 
-3. **Update Notebook Parameters:** 
+3. **Update Notebook Parameters:**
    - Before running the notebook, ensure that you update the notebook parameters:
      - **Task Key:** Set the `task_key` parameter to match the key associated with the new file. This key should be unique and match the name of the raw table.
 
@@ -57,7 +57,7 @@ This repository is a continuous work in progress, aimed at providing comprehensi
 
 
 #### Silver
-1. **Create the SQL Transformation File:** 
+1. **Create the SQL Transformation File:**
    - Create the SQL transformation file in `ingestion/silver/olist/silver_transformation` that will store all the transformations related to the business.
 
 2. **Update Notebook Parameters:**
@@ -84,7 +84,7 @@ This repository is a continuous work in progress, aimed at providing comprehensi
 
 - **Feature Quality Assurance:** The architecture includes a feature quality assurance step that incorporates tools like Pandas Profiling and Great Expectations. These tools ensure data quality and consistency by generating detailed statistics and applying predefined rules to validate each batch of data.
 
-- **Orchestration with Databricks Workflow:** The complete job execution is orchestrated by Databricks Workflow, providing flexibility to define parameters, batch start and end dates, time intervals between features, tasks to be executed, and window size vectors for 
+- **Orchestration with Databricks Workflow:** The complete job execution is orchestrated by Databricks Workflow, providing flexibility to define parameters, batch start and end dates, time intervals between features, tasks to be executed, and window size vectors for
 
 
 ### How to Create New Features
@@ -116,8 +116,4 @@ This project is just a way to study all Databricks features. So, there are some 
 - Implement a CI structure to test codes before merging them into the main branch.
 
 
-STILL UNDER CONSTRUCTION 
-
-
-
-
+STILL UNDER CONSTRUCTION
