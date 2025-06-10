@@ -36,7 +36,7 @@ resources:
               - "{{task.name}}"
           libraries:
             - whl: ../../dist/*.whl
-          
+
 
         - task_key: bronze__olist__olist_geolocation
           job_cluster_key: ingestion-cluster
