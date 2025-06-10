@@ -22,11 +22,14 @@ variables:
     description: schedule pause status
     default: UNPAUSED
 
+
 targets:
   dev:
     cluster_id: 0610-174950-70xr60bt
     default: true
     mode: development
+    presets:
+      name_prefix: ${bundle.target}_${workspace.current_user.short_name}_
     workspace:
       host: https://adb-2625093468221227.7.azuredatabricks.net
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
@@ -34,11 +37,15 @@ targets:
     cluster_id: 0610-174950-70xr60bt
     default: false
     mode: development
+    presets:
+      name_prefix: ${bundle.target}_${workspace.current_user.short_name}_
     workspace:
       host: https://adb-2625093468221227.7.azuredatabricks.net
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
   prod:
     default: false
+    presets:
+      name_prefix: ${bundle.target}_
     workspace:
       host: https://adb-2625093468221227.7.azuredatabricks.net
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
