@@ -21,6 +21,8 @@ dependencies = [
     "setuptools-scm>=8.2.0",
     "databricks-feature-engineering>=0.9.0",
     "imbalanced-learn>=0.13.0",
+    "go-task-bin>=3.43.3",
+    "pytest==7.4.0"
 ]
 
 [project.optional-dependencies]
