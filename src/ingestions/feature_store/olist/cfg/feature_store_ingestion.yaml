@@ -1,5 +1,0 @@
-db_name: olist_feature_stores
-ref_name: olist
-table_name: olist_{task_key}_features
-fs_path: /mnt/datalake/olist/4-feature-stores/olist_{task_key}_features
-base_query_path: feature_store_transformation/{task_key}_fs.sql

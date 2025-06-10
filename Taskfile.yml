@@ -1,0 +1,134 @@
+version: "3"
+
+# Define variables accessible to all tasks
+vars:
+ PROJECT: databricks_ml_lakehouse
+ SCHEMA: olist
+ VERSION_FILE: version.txt
+ UV: uv
+ PYTHON: python3
+
+# Tasks definition
+tasks:
+ # Default task - shows help
+ default:
+   desc: Show this help message
+   cmds:
+     - task --list
+   silent: true
+
+ # Check if version file exists, create if it doesn't
+ check-version-file:
+   desc: Check if version file exists, create if it doesn't
+   cmds:
+     - echo "Creating initial version file"
+     - echo "0.0.1" > {{.VERSION_FILE}}
+   status:
+     - test -f {{.VERSION_FILE}}
+
+ # Update version - increments the patch version
+ update-version:
+   desc: Increment the patch version
+   deps: [check-version-file]
+   cmds:
+     - echo "Updating version..."
+     - |
+       {{.PYTHON}} -c '
+       import os; 
+       f="{{.VERSION_FILE}}"; 
+       v=open(f).read().strip(); 
+       parts=v.split("."); 
+       parts[-1]=str(int(parts[-1])+1); 
+       new_v=".".join(parts); 
+       open(f,"w").write(new_v); 
+       print(f"Version updated from {v} to {new_v}")
+       '
+
+ # Create virtual environment
+ create-venv:
+   desc: Create Python 3.11 virtual environment
+   cmds:
+     - "{{.UV}} venv -p 3.11 venv"
+
+ # Install dependencies
+ install:
+   desc: Install dependencies from pyproject.toml
+   cmds:
+     - "{{.UV}} pip install -r pyproject.toml --all-extras --link-mode=copy --no-cache-dir"
+     - "{{.UV}} lock"
+     - "{{.UV}} pip install -e . --link-mode=copy --no-cache-dir"
+
+ # Run linting
+ lint:
+   desc: Run pre-commit hooks on all files
+   cmds:
+     - pre-commit run --all-files
+
+ # Clean build artifacts but preserve version
+ clean:
+   desc: Remove build artifacts
+   cmds:
+     - rm -rf **pycache** */__pycache__ dist build *.egg-info .pytest_cache
+     - find . -name "*.pyc" -delete
+
+ # Run tests
+ test:
+   desc: Run pytest
+   dir: tests
+   cmds:
+     - "{{.UV}} run pytest"
+
+ # Build package with version update
+ build:
+   desc: Update version and build package
+   deps: [update-version]
+   cmds:
+     - "{{.UV}} build"
+     - echo "Build completed successfully with version $(cat {{.VERSION_FILE}})"
+
+ # Copy wheel file to Databricks
+ update-whl-dbx:
+   desc: Copy wheel file to Databricks
+   cmds:
+     - echo "Copying latest wheel file to Databricks..."
+     - |
+       LATEST_WHL=$(ls -t ./dist/*.whl | head -1) && \
+       echo "Using wheel file: $LATEST_WHL" && \
+       databricks fs cp $LATEST_WHL dbfs:/Volumes/uc_dev/{{.SCHEMA}}/packages/{{.PROJECT}}-latest-py3-none-any.whl --overwrite && \
+       databricks fs cp $LATEST_WHL dbfs:/Volumes/uc_qa/{{.SCHEMA}}/packages/{{.PROJECT}}-latest-py3-none-any.whl --overwrite && \
+       databricks fs cp $LATEST_WHL dbfs:/Volumes/uc_prod/{{.SCHEMA}}/packages/{{.PROJECT}}-latest-py3-none-any.whl --overwrite
+
+ # Full release process
+ release:
+   desc: Clean, update version, build, and copy to Databricks
+   deps: [clean, update-version, build, update-whl-dbx]
+
+ # Reset version
+ reset-version:
+   desc: Reset version to 0.0.1
+   cmds:
+     - echo "Resetting version..."
+     - echo "0.0.1" > {{.VERSION_FILE}}
+
+ # Initialize pre-commit
+ init-pre-commit:
+   desc: Run pre-commits
+   cmds:
+     - echo "Running pre-commit..." && pre-commit run --all-files
+
+ # Help command
+ help:
+   desc: Show available targets and current version
+   cmds:
+     - echo "Available targets:"
+     - echo " create-venv - Create Python 3.11 virtual environment"
+     - echo " install - Install dependencies from pyproject.toml"
+     - echo " lint - Run pre-commit hooks on all files"
+     - echo " clean - Remove build artifacts"
+     - echo " test - Run pytest"
+     - echo " build - Update version and build package"
+     - echo " update-whl-dbx - Copy wheel file to Databricks"
+     - echo " release - Clean, update version, build, and copy to Databricks"
+     - echo " update-version - Only update the version number"
+     - echo " reset-version - Reset version to 0.0.1"
+     - echo " init-pre-commit - Run pre-commits"

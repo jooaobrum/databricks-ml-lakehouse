@@ -5,5 +5,5 @@ SELECT  order_id,
         shipping_limit_date as shipping_limit_timestamp,
         price as item_price,
         freight_value as freight_price
-        
+
 FROM bronze_{task_key}
