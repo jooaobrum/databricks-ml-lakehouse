@@ -13,6 +13,9 @@ resources:
             autoscale:
               min_workers: 1
               max_workers: 1
+      tags:
+        env: ${bundle.target}
+        task: "ingestion"
       tasks:
         # BRONZE TASKS
         - task_key: bronze__olist__olist_customers
