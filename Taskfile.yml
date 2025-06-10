@@ -34,13 +34,13 @@ tasks:
      - echo "Updating version..."
      - |
        {{.PYTHON}} -c '
-       import os; 
-       f="{{.VERSION_FILE}}"; 
-       v=open(f).read().strip(); 
-       parts=v.split("."); 
-       parts[-1]=str(int(parts[-1])+1); 
-       new_v=".".join(parts); 
-       open(f,"w").write(new_v); 
+       import os;
+       f="{{.VERSION_FILE}}";
+       v=open(f).read().strip();
+       parts=v.split(".");
+       parts[-1]=str(int(parts[-1])+1);
+       new_v=".".join(parts);
+       open(f,"w").write(new_v);
        print(f"Version updated from {v} to {new_v}")
        '
 
