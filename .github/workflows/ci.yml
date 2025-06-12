@@ -45,7 +45,7 @@ jobs:
           uv run python tests/run_tests.py
 
       - name: Install Databricks CLI
-        uses: databricks/setup-cli@v1
+        uses: databricks/setup-cli@948d7379a31615a4c8e9ccbbc5445a12d6b32736
         with:
           version: 0.232.1
 
