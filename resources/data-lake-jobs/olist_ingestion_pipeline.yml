@@ -1,25 +1,15 @@
 resources:
   jobs:
-    olist_ingestion_pipeline:
+    serverless_job:
       name: olist_ingestion_pipeline
       max_concurrent_runs: 3
-      job_clusters:
-        - job_cluster_key: "ingestion-cluster"
-          new_cluster:
-            spark_version: "15.4.x-scala2.12"
-            data_security_mode: "SINGLE_USER"
-            node_type_id: "Standard_DS3_v2"
-            driver_node_type_id: "Standard_DS3_v2"
-            autoscale:
-              min_workers: 1
-              max_workers: 1
       tags:
         env: ${bundle.target}
         task: "ingestion"
       tasks:
         # BRONZE TASKS
         - task_key: bronze__olist__olist_customers
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/bronze/olist/bronze_ingestion.py"
             parameters:
@@ -37,12 +27,11 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
 
         - task_key: bronze__olist__olist_geolocation
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/bronze/olist/bronze_ingestion.py"
             parameters:
@@ -60,11 +49,10 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: bronze__olist__olist_order_items
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/bronze/olist/bronze_ingestion.py"
             parameters:
@@ -82,11 +70,10 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: bronze__olist__olist_order_payments
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/bronze/olist/bronze_ingestion.py"
             parameters:
@@ -104,11 +91,10 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: bronze__olist__olist_order_reviews
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/bronze/olist/bronze_ingestion.py"
             parameters:
@@ -126,11 +112,10 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: bronze__olist__olist_orders
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/bronze/olist/bronze_ingestion.py"
             parameters:
@@ -148,11 +133,10 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: bronze__olist__olist_products
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/bronze/olist/bronze_ingestion.py"
             parameters:
@@ -170,11 +154,10 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: bronze__olist__olist_sellers
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/bronze/olist/bronze_ingestion.py"
             parameters:
@@ -192,14 +175,13 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         # SILVER TASKS WITH DEPENDENCIES
         - task_key: silver__olist__olist_customers
           depends_on:
             - task_key: bronze__olist__olist_customers
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -211,13 +193,12 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: silver__olist__olist_geolocation
           depends_on:
             - task_key: bronze__olist__olist_geolocation
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -229,13 +210,12 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: silver__olist__olist_order_items
           depends_on:
             - task_key: bronze__olist__olist_order_items
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -247,13 +227,12 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: silver__olist__olist_order_payments
           depends_on:
             - task_key: bronze__olist__olist_order_payments
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -265,13 +244,12 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: silver__olist__olist_order_reviews
           depends_on:
             - task_key: bronze__olist__olist_order_reviews
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -283,13 +261,12 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: silver__olist__olist_orders
           depends_on:
             - task_key: bronze__olist__olist_orders
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -301,13 +278,12 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: silver__olist__olist_products
           depends_on:
             - task_key: bronze__olist__olist_products
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -319,13 +295,12 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
 
         - task_key: silver__olist__olist_sellers
           depends_on:
             - task_key: bronze__olist__olist_sellers
-          job_cluster_key: ingestion-cluster
+          environment_key: default
           spark_python_task:
             python_file: "../../scripts/ingestions/silver/olist/silver_ingestion.py"
             parameters:
@@ -337,5 +312,11 @@ resources:
               - "dt_ingestion"
               - "--task_key"
               - "{{task.name}}"
-          libraries:
-            - whl: ../../dist/*.whl
+
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "2"
+            dependencies:
+              - "../../dist/*.whl"
