@@ -9,6 +9,9 @@ on:
       - qa
       - main
 
+env:
+  DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
 jobs:
   build_and_test:
     runs-on: ubuntu-latest
@@ -39,3 +42,13 @@ jobs:
       - name: Run pytest
         run: |
           uv run python tests/run_tests.py
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@v1
+        with:
+          version: 0.232.1
+
+      - name: Validate Databricks Bundle
+        env:
+          DATABRICKS_BUNDLE_ENV: dev
+        run: databricks bundle validate --target "$DATABRICKS_BUNDLE_ENV"
