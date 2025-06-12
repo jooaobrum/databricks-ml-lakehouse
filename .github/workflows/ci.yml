@@ -50,5 +50,5 @@ jobs:
 
       - name: Validate Databricks Bundle
         env:
-          DATABRICKS_BUNDLE_ENV: dev
+          DATABRICKS_BUNDLE_ENV: prod
         run: databricks bundle validate --target "$DATABRICKS_BUNDLE_ENV"
