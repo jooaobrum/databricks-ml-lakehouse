@@ -11,6 +11,7 @@ on:
 
 env:
   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+  DATABRICKS_HOST: https://dbc-da6511e6-81a8.cloud.databricks.com
 
 jobs:
   build_and_test:
@@ -44,15 +45,11 @@ jobs:
           uv run python tests/run_tests.py
 
       - name: Install Databricks CLI
-        uses: databricks/setup-cli@948d7379a31615a4c8e9ccbbc5445a12d6b32736
+        uses: databricks/setup-cli@v1
         with:
           version: 0.232.1
 
-      - name: Authenticate with Databricks
-        run: |
-          databricks auth login --host https://dbc-da6511e6-81a8.cloud.databricks.com --token $DATABRICKS_TOKEN
-
       - name: Validate Databricks Bundle
         env:
-          DATABRICKS_BUNDLE_ENV: prod
+          DATABRICKS_BUNDLE_ENV: dev
         run: databricks bundle validate --target "$DATABRICKS_BUNDLE_ENV"
