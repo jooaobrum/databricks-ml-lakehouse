@@ -48,6 +48,10 @@ jobs:
         with:
           version: 0.232.1
 
+      - name: Authenticate with Databricks
+        run: |
+          databricks auth login --host https://dbc-da6511e6-81a8.cloud.databricks.com --token $DATABRICKS_TOKEN
+
       - name: Validate Databricks Bundle
         env:
           DATABRICKS_BUNDLE_ENV: prod
