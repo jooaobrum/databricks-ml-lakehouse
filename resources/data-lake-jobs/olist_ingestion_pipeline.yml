@@ -6,6 +6,7 @@ resources:
       tags:
         env: ${bundle.target}
         task: "ingestion"
+        project: "data-lake"
       tasks:
         # BRONZE TASKS
         - task_key: bronze__olist__olist_customers
