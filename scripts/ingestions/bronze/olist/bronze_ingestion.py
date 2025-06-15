@@ -48,8 +48,8 @@ def setup_configuration(args):
     # Create configuration dictionary
     cfg = {
         "ref_name": ref_name,
-        "bronze_catalog_name": f"uc_{args.env}",
-        "bronze_schema_name": f"{ref_name}_bronze",
+        "bronze_catalog_name": f"uc_bronze_{args.env}",
+        "bronze_schema_name": f"{ref_name}",
         "lz_file_format": args.file_format,
         "lz_table_name": lz_table_name,
         "bronze_table_name": lz_table_name,
