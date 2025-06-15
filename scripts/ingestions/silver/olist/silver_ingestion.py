@@ -32,11 +32,11 @@ def setup_configuration(args):
     # Create configuration dictionary
     cfg = {
         "ref_name": ref_name,
-        "bronze_catalog_name": f"uc_{args.env}",
-        "bronze_schema_name": f"{ref_name}_bronze",
+        "bronze_catalog_name": f"uc_bronze_{args.env}",
+        "bronze_schema_name": f"{ref_name}",
         "bronze_table_name": bronze_table_name,
-        "silver_catalog_name": f"uc_{args.env}",
-        "silver_schema_name": f"{ref_name}_silver",
+        "silver_catalog_name": f"uc_silver_{args.env}",
+        "silver_schema_name": f"{ref_name}",
         "silver_table_name": silver_table_name,
         "transformation_query_path": f"silver_transformation/{silver_table_name}.sql",
         "partition_columns": partition_columns,

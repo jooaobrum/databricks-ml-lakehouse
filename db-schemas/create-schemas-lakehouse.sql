@@ -1,20 +1,23 @@
--- Databricks notebook source
-CREATE SCHEMA IF NOT EXISTS uc_dev.olist_bronze;
-CREATE SCHEMA IF NOT EXISTS uc_qa.olist_bronze;
-CREATE SCHEMA IF NOT EXISTS uc_prod.olist_bronze;
+-- DEV
+CREATE CATALOG IF NOT EXISTS uc_bronze_dev;
+CREATE CATALOG IF NOT EXISTS uc_silver_dev;
+CREATE CATALOG IF NOT EXISTS uc_gold_datascience_dev;
+CREATE SCHEMA IF NOT EXISTS uc_bronze_dev.olist;
+CREATE SCHEMA IF NOT EXISTS uc_silver_dev.olist;
+CREATE SCHEMA IF NOT EXISTS uc_gold_datascience_dev.olist;
 
--- COMMAND ----------
+-- QA
+CREATE CATALOG IF NOT EXISTS uc_bronze_qa;
+CREATE CATALOG IF NOT EXISTS uc_silver_qa;
+CREATE CATALOG IF NOT EXISTS uc_gold_datascience_qa;
+CREATE SCHEMA IF NOT EXISTS uc_bronze_qa.olist;
+CREATE SCHEMA IF NOT EXISTS uc_silver_qa.olist;
+CREATE SCHEMA IF NOT EXISTS uc_gold_datascience_qa.olist;
 
-CREATE SCHEMA IF NOT EXISTS uc_dev.olist_silver;
-CREATE SCHEMA IF NOT EXISTS uc_qa.olist_silver;
-CREATE SCHEMA IF NOT EXISTS uc_prod.olist_silver;
-
-
--- COMMAND ----------
-
-CREATE SCHEMA IF NOT EXISTS uc_dev.olist_gold;
-CREATE SCHEMA IF NOT EXISTS uc_qa.olist_gold;
-CREATE SCHEMA IF NOT EXISTS uc_prod.olist_gold;
-
-
-DROP
+-- PROD
+CREATE CATALOG IF NOT EXISTS uc_bronze_prod;
+CREATE CATALOG IF NOT EXISTS uc_silver_prod;
+CREATE CATALOG IF NOT EXISTS uc_gold_datascience_prod;
+CREATE SCHEMA IF NOT EXISTS uc_bronze_prod.olist;
+CREATE SCHEMA IF NOT EXISTS uc_silver_prod.olist;
+CREATE SCHEMA IF NOT EXISTS uc_gold_datascience_prod.olist;
