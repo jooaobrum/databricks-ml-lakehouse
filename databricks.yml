@@ -26,24 +26,22 @@ variables:
 targets:
   dev:
     default: true
-    mode: development
     presets:
-      name_prefix: ${bundle.target}_${workspace.current_user.short_name}_
+      name_prefix: job_${bundle.name}_${bundle.target}_
     workspace:
       host: https://dbc-da6511e6-81a8.cloud.databricks.com
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
   qa:
     default: false
-    mode: development
     presets:
-      name_prefix: ${bundle.target}_${workspace.current_user.short_name}_
+      name_prefix: job_${bundle.name}_${bundle.target}_
     workspace:
       host: https://dbc-da6511e6-81a8.cloud.databricks.com
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}
   prod:
     default: false
     presets:
-      name_prefix: ${bundle.target}_
+      name_prefix: job_${bundle.name}_${bundle.target}_
     workspace:
       host: https://dbc-da6511e6-81a8.cloud.databricks.com
       root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.target}/${bundle.name}

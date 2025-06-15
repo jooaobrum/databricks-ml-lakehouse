@@ -1,7 +1,7 @@
 resources:
   jobs:
     serverless_job:
-      name: olist_ingestion_pipeline
+      name: datalake_ingestion_pipeline
       max_concurrent_runs: 3
       tags:
         env: ${bundle.target}
